@@ -1,4 +1,4 @@
-function spDist_scoreEyeData(subj,sess)
+function spDist_scoreEyeData(subj,sess,WHICH_EXCL)
 %
 % adapted from wmPri_scoreEyeData
 % TCS 8/30/2018
@@ -11,18 +11,20 @@ function spDist_scoreEyeData(subj,sess)
 %
 % trial start/end = 1/10
 %
+% NOTE: to 'skip' WHICH_EXCL argument (and to not give a 'null' argument,
+% which is a valid option here, use an empty CELL: {} - giving [] will not
+% visually mark any trials for exclusion in QC images.
+%
 
 close all;
 root = spDist_loadRoot;
 ifg_fn = '~/Documents/MATLAB/toolboxes_dev/iEye_ts/examples/p_500hz.ifg';
 %ifg_fn = '/Volumes/home/grace/iEye_ts-master/examples/p_500hz.ifg';
 
-WHICH_EXCL = [11 13 20 21 22]; % everything except calibration errors (for now)
-
 task_dir = 'spDist';
 
 if nargin < 1
-    subj = {'XL'};
+    subj = {'AY','CC','KD','MR','XL'};
     
 end
 
@@ -30,6 +32,11 @@ if nargin < 2
     sess = {{'spDist2'}};
     
 end
+
+if nargin < 3 || iscell(WHICH_EXCL) && isempty(WHICH_EXCL)
+    WHICH_EXCL = [11 13 20 21 22]; % everything except calibration errors (for now)
+end
+
 
 excl_criteria.drift_fix_thresh = 5; % how far a fixation can be from center to drop a trial
 
