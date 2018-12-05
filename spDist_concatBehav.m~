@@ -10,22 +10,15 @@ function spDist_concatBehav(subj,sess)
 
 task_dir = 'spDist'; % use this to construct all dirs
 
-root = spDist_loadRoot;
+root = spDist_l
 
-root_raw = sprintf('%s/raw',root); % where raw behavioral data lives
-root_target = sprintf('%s/%s_behav',root,task_dir); % where to save concat file (and where to look for _scored)
+root_raw = sprintf('/Volumes/data/%s/raw',task_dir); % where raw behavioral data lives
+root_target = sprintf('/Volumes/data/%s/%s_behav',task_dir,task_dir); % where to save concat file (and where to look for _scored)
 
-if nargin < 1 || isempty(subj)
-    subj = {'AY','CC','KD','MR','XL'};
-end
-
-
-if nargin < 2 || isempty(sess)
-    sess_template = {'spDist1','spDist2'};
-    sess = cell(length(subj),1); for ss = 1:length(subj); sess{ss} = sess_template; end
-    clear sess_template
-end
-
+subj = {'XL'};
+%subj = {'CC','KD','AY','MR'};
+%sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+sess = {{'spDist1'}};
 
 
 

@@ -24,13 +24,11 @@ trn_root = sprintf('%s/../wmChoose_scanner/',root);
 
 if nargin < 1
     subj = {'CC','AY','KD','MR','XL'};
-        %subj = {'XL'};
-
+        
 end
 if nargin < 2
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1'}};
-    %sess = {{'spDist1'}};
-
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    
 end
 
 if nargin < 3
