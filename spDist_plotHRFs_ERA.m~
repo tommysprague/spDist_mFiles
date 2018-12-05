@@ -173,7 +173,7 @@ for vv = 1:length(ROIs)
 end
 
 myy = cell2mat(get(axhrf,'YLim'));
-set(axhrf,'YLim',[min(myy(:,1)) max(myy(:,2))],'XLim',[which_TRs(1) which_TRs(end)]*TR,'TickDir','out');
+set(axhrf,'YLim',[min(myy(:,1)) max(myy(:,2))],'XLim',[which_TRs(1) which_TRs(end)]*TR,'TickDir','out','TickLength',[.025 .025]);
 set(mh,'YData',[min(myy(:,1)) max(myy(:,2))]);
 
 set(gcf,'Position',[ 66        1180        2279         158])
@@ -214,18 +214,19 @@ for ss = 1:length(subj)
 end
 
 match_ylim(ax_subjhrf(:));
-set(ax_subjhrf(:),'XLim',[which_TRs(1) which_TRs(end)]*TR,'TickDir','out');
+set(ax_subjhrf(:),'XLim',[which_TRs(1) which_TRs(end)]*TR,'TickDir);
 
 %% a top-down plot like fidelity
-%cond_str = {'Mapping','R2-cued','R2-choose'};
-cond_str = {'No distractor','Distractor'};
+cond_str = {'Mapping','R2-cued','R2-choose'};
 figure; 
 for cc = 1:length(all_mean_hrf)
     subplot(1,length(all_mean_hrf),cc);
-    
-    this_TRs = which_TRs;
+    if cc == 1
+        this_TRs = which_TRs;
+    else
+        this_TRs = which_TRs_choose;
+    end
     imagesc(this_TRs*TR, 1:length(ROIs),mean(all_mean_hrf{cc},3));
-    colormap viridis;
     set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out','Box','off','FontSize',14);
     xlabel('Time (s)');
     title(cond_str{cc});
@@ -239,26 +240,31 @@ figure;
 
 plot([0 length(ROIs)+1],[0 0],'k--');
 
-offsets = linspace(-0.15,0.15,length(all_mean_hrf));
+offsets = linspace(-0.2,0.2,length(all_mean_hrf));
 
 for cc = 1:length(all_mean_hrf)
-    this_TR_range = which_TRs>=delay_range(1)&which_TRs<=delay_range(2);
-    
+    if cc == 1
+        this_TR_range = which_TRs>=delay_range(1)&which_TRs<=delay_range(2);
+        this_color = mapping_color;
+    else
+        this_TR_range = which_TRs_choose>=delay_range(1)&which_TRs_choose<=delay_range(2);
+        this_color = cond_colors(cc-1,:);
+    end
     all_mean_delay = squeeze(mean(all_mean_hrf{cc}(:,this_TR_range,:),2)); % ROI x subj
     hold on;
     for vv = 1:length(ROIs)
         thise = std(all_mean_delay(vv,:),[],2)/sqrt(length(subj));
         thism = mean(all_mean_delay(vv,:),2);
         
-        plot(vv*[1 1]+offsets(cc),thism+thise*[-1 1],'-','LineWidth',1.5,'Color',cond_colors(cc,:));
-        plot(vv+offsets(cc),thism,'o','Color',cond_colors(cc,:),'MarkerFaceColor','w','MarkerSize',8,'LineWidth',1.5);
+        plot(vv*[1 1]+offsets(cc),thism+thise*[-1 1],'-','LineWidth',1.5,'Color',this_color);
+        plot(vv+offsets(cc),thism,'o','Color',this_color,'MarkerFaceColor','w','MarkerSize',6,'LineWidth',1.5);
     end
     
 
 end
 
 
-set(gca,'XTick',1:length(ROIs),'XTickLabel',ROIs,'XTickLabelRotation',-45,'FontSize',14,'TickDir','out','Box','off');
+set(gca,'XTick',1:length(ROIs),'XTickLabel',ROIs,'XTickLabelRotation',-45,'FontSize',14);
 title('Mean delay period activation');
 ylabel('BOLD Z-score');
 
