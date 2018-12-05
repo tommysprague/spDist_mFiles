@@ -8,18 +8,26 @@
 %
 % adapted from MGSMap_extractTrialData1.m TCS 7/23/2018
 
+function spDist_extractTrialData(subj,sess,ROIs)
+
 
 task_dir = 'spDist';
 
-root = sprintf('/Volumes/data/%s',task_dir);
+root = spDist_loadRoot;
 
-%subj = {'CC','KD','AY','MR'};
-%subj = {'MR'};
-subj = {'XL'};
-%sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1'}};
-sess = {{'spDist1'}};
+if nargin < 1 || isempty(subj)
+    subj = {'AY','CC','KD','MR','XL'};
+end
 
-ROIs = {'V1','V2','V3','V3AB','hV4','VO1','VO2','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS','iPCS'};
+if nargin < 2 || isempty(sess)
+    sess_template = {'spDist1','spDist2'};
+    sess = cell(length(subj),1); for ss = 1:length(subj); sess{ss} = sess_template; end
+    clear sess_template
+end
+
+if nargin < 3 || isempty(ROIs)
+    ROIs = {'V1','V2','V3','V3AB','hV4','VO1','VO2','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS','iPCS'};
+end
 
 n_excluded_TRs = 0; % we removed this many TRs during preprocessing
 

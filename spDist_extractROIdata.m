@@ -13,7 +13,6 @@
 function spDist_extractROIdata(subj,sess,ROIs)
 
 task_dir = 'spDist';
-%root = sprintf('/deathstar/data/%s/',task_dir);
 root = spDist_loadRoot;
 
 if nargin < 1 || isempty(subj)
