@@ -9,8 +9,8 @@ end
 %subj = {'CC'};
 if nargin < 2
     % TODO: if no defined sessions, use all....
-    sess_template = {{'spDist1','spDist2'}};
-    sess = cell(length(subj,1)); for ss = 1:length(subj); sess{ss} = sess_template; end; 
+    sess_template = {'spDist1','spDist2'};
+    sess = cell(length(subj),1); for ss = 1:length(subj); sess{ss} = sess_template; end 
     clear sess_template
     %sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
 end
