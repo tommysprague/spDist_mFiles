@@ -10,34 +10,54 @@
 %
 %
 
+function spDist_extractROIdata(subj,sess,ROIs)
 
 task_dir = 'spDist';
-root = sprintf('/deathstar/data/%s/',task_dir);
+%root = sprintf('/deathstar/data/%s/',task_dir);
+root = spDist_loadRoot;
+
+if nargin < 1 || isempty(subj)
+    subj = {'AY','CC','KD','MR','XL'};
+end
+
+if nargin < 2 || isempty(subj)
+    % TODO: if no defined sessions, use all....
+    sess_template = {'spDist1','spDist2'};
+    sess = cell(length(subj),1); for ss = 1:length(subj); sess{ss} = sess_template; end 
+    clear sess_template
+end
+
+% heuristic for defining RF session - can make more explicit, but this
+% should work ok
+sess_rf = cell(length(subj),1);
+for ss = 1:length(subj)
+    if ~strcmpi(subj{ss},'EK') % only subj EK has RF2 as their target ret
+        sess_rf{ss} = 'RF1';
+    else
+        sess_rf{ss} = 'RF2';
+    end
+end
 
 
-%subj = {'CC','KD','AY','MR'};
-subj = {'XL'};
-%sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1'}};
-sess = {{'spDist1'}};
+% should work...
+root_rf = sprintf('%s/../vRF_tcs/',root);
 
-root_rf = '/deathstar/data/vRF_tcs/';
+%root_rf = '/deathstar/data/vRF_tcs/';
 
-%sess_rf = {'RF1','RF1','RF1','RF1'}; % where RF data, ROIs are stored (for now; may use centralized ROI repository?); same length as subj
-sess_rf = {'RF1'}
 % in case ROIs live somewhere else...
 root_ROI = root;
 %root_ROI = '/deathstar/data/wmChoose_scanner/';
 
-ROIs = {'V1','V2','V3','V3AB','hV4','VO1','VO2','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS','iPCS'};
+if nargin < 3 || isempty(ROIs)
+    ROIs = {'V1','V2','V3','V3AB','hV4','VO1','VO2','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS','iPCS'};
+end
 
 
-%map_TRs = 528;
+
 task_TRs = 372;  % number of TRs in 'choose' task
 
-% which functional files do we want?
-% TODO: maybe make ssPri_nii_ROIdata subfolders for this?
-
-func_type = 'surf';
+% which functional files do we want? func or surf
+func_type = 'surf'; % 'surf' or 'func'
 
 func_file = sprintf('%s_volreg_normPctDet*.nii.gz',func_type); % search for this in SUBJ/SESS
 
