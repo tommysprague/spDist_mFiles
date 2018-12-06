@@ -25,7 +25,7 @@ end
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
 end
 
 if nargin < 3 || isempty(ROIs)
@@ -512,19 +512,28 @@ for vv = 1:length(ROIs)
         
         mu_fidelity(vv,:,cc) = mean(thisd,1);
         
+        thise = std(thisd,[],1)/sqrt(length(subj));
+        
         % plot mean
         plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(cc,:));
         
+        % plot error bars
+        plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(cc,:));
+        
+        
+        yline(0);
         % TODO: plot std error across subj
         
         title(ROIs{vv});
         if vv == 1
             ylabel('Target fidelity');
+        else
+            set(gca,'YTickLabel',[]);
         end
         
-        set(gca,'XTick',[0:6:24],'TickDir','out');
+        set(gca,'XTick',[0:6:24],'TickDir','out','XTickLabel',[]);
         
-        clear thisd;
+        clear thisd thise;
     end
     
     mh1(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
@@ -546,10 +555,20 @@ for vv = 1:length(ROIs)
     
     mu_fidelity(vv,:,1+length(cu)) = mean(thisd,1);
     
+    thise = std(thisd,[],1)/sqrt(length(subj));
+
+    
+    
     plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(3,:));
+    plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(3,:));
+    
+    yline(0);
+    
     if vv == 1
         ylabel('Distractor fidelity');
         xlabel('Time (s)');
+    else
+        set(gca,'YTickLabel',[]);
     end
     
     set(gca,'XTick',[0:6:24],'TickDir','out');
@@ -567,6 +586,8 @@ end
 myy = match_ylim(get(gcf,'Children'));
 set(mh1,'YData',[min(myy(:,1)) max(myy(:,2))]);
 set(mh2,'YData',[min(myy(:,1)) max(myy(:,2))]);
+
+set(gcf,'Position',[185         745        1843         470]);
 
 
 %% fidelity difference: distractor present vs absent

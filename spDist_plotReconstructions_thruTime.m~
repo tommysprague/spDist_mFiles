@@ -25,7 +25,7 @@ end
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
 end
 
 if nargin < 3 || isempty(ROIs)
@@ -309,7 +309,7 @@ for dd = 1:length(delay_tpts)
         end
         
         if vv == 1
-            ylabel('Channel response');
+            ylabel(sprintf('%0.01f to %0.01f s',delay_tpt_range(dd,1),delay_tpt_range(dd,2)));
             if dd == length(delay_tpts)
                 xlabel('Position (\circ)');
             end
@@ -512,19 +512,28 @@ for vv = 1:length(ROIs)
         
         mu_fidelity(vv,:,cc) = mean(thisd,1);
         
+        thise = std(thisd,[],1)/sqrt(length(subj));
+        
         % plot mean
         plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(cc,:));
         
+        % plot error bars
+        plot(myTR*tpts.*[1;1],mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(cc,:));
+        
+        
+        yline(0);
         % TODO: plot std error across subj
         
         title(ROIs{vv});
         if vv == 1
             ylabel('Target fidelity');
+        else
+            set(gca,'YTickLabel',[]);
         end
         
-        set(gca,'XTick',[0:6:24],'TickDir','out');
+        set(gca,'XTick',[0:6:24],'TickDir','out','XTickLabel',[]);
         
-        clear thisd;
+        clear thisd thise;
     end
     
     mh1(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
@@ -546,10 +555,20 @@ for vv = 1:length(ROIs)
     
     mu_fidelity(vv,:,1+length(cu)) = mean(thisd,1);
     
+    thise = std(thisd,[],1)/sqrt(length(subj));
+
+    
+    
     plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(3,:));
+    plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(3,:));
+    
+    yline(0);
+    
     if vv == 1
         ylabel('Distractor fidelity');
         xlabel('Time (s)');
+    else
+        set(gca,'YTickLabel',[]);
     end
     
     set(gca,'XTick',[0:6:24],'TickDir','out');
@@ -567,6 +586,8 @@ end
 myy = match_ylim(get(gcf,'Children'));
 set(mh1,'YData',[min(myy(:,1)) max(myy(:,2))]);
 set(mh2,'YData',[min(myy(:,1)) max(myy(:,2))]);
+
+set(gcf,'Position',[185         745        1843         470]);
 
 
 %% fidelity difference: distractor present vs absent
@@ -680,31 +701,34 @@ end
 sgtitle('Fidelity (normalized)');
 
 %% plot (individual subj as rows)
-% n_subj x n_rois [TODO]
+% n_subj x n_rois 
 
 all_ax_ss = [];
-
+for cc = 1:length(cu)
     figure;
     for ss = 1:length(subj)
 
-    for cc = 1:length(cu)
+
         for vv = 1:length(ROIs)
             
-            subplot(length(cu),length(ROIs),(cc-1)*length(ROIs)+vv);hold on;
+            %subplot(length(cu),length(ROIs),(cc-1)*length(ROIs)+vv);hold on;
+            subplot(length(subj),length(ROIs),(ss-1)*length(ROIs)+vv);hold on;
             
             thisidx = all_subj==ss & all_ROIs==vv & all_conds(:,1)==cu(cc);
             thisd = squeeze(mean(all_recons{1}(thisidx,:,:),1)).';
             
             imagesc(angs,tpts(tpts_to_plot)*myTR,thisd(tpts_to_plot,:));
             colormap viridis
-            if cc == 1
+            if ss == 1
                 title(ROIs{vv});
             end
             axis ij tight
             set(gca,'XTick',-180:90:180);
             if vv == 1
-                xlabel('Polar angle (\circ)');
-                ylabel(sprintf('%s - time (s)',cond_str{cc}));
+                if ss == length(subj)
+                    xlabel('Polar angle (\circ)');
+                end
+                ylabel(sprintf('%s - time (s)',subj{ss}));
                 set(gca,'XTickLabel',{'-180','','0','','180'});
                 
             else
@@ -719,7 +743,8 @@ all_ax_ss = [];
     set(gcf,'Position',[ 220        1058        1760         194]);
     
     try
-        sgtitle(subj{ss}); % only R2018b or later...
+        %sgtitle(subj{ss}); % only R2018b or later...
+        sgtitle(cond_str{cc})
     catch
         fprintf('UPGRADE YOUR MATLAB (2018b or newer)!\n');
         set(gcf,'NumberTitle','off','Name',subj{ss});
@@ -734,41 +759,41 @@ match_clim(all_ax_ss(:));
 
 
 %% plot average reconstruction over defined delay-period
-figure;
-for vv = 1:length(ROIs)
-    
-    this_recons = nan(length(subj),length(angs));
-    
-    for ss = 1:length(subj)
-        
-        thisidx = all_subj == ss & all_ROIs == vv;
-        tidx = ismember(tpts,plot_tpts);
-        
-        this_recons(ss,:) = mean( mean(all_recons(thisidx,:,tidx),3), 1 );
-        
-    end
-    
-    subplot(1,length(ROIs),vv); hold on;
-    plot(angs,mean(this_recons,1),'-','LineWidth',2,'Color',ROI_colors(vv,:));
-    
-    thiserr = std(this_recons,[],1)/sqrt(length(subj));
-    plot(angs,mean(this_recons,1)+thiserr,'--','LineWidth',0.5,'Color',ROI_colors(vv,:));
-    plot(angs,mean(this_recons,1)-thiserr,'--','LineWidth',0.5,'Color',ROI_colors(vv,:));
-    
-    title(ROIs{vv});
-    
-    if vv == 1
-        xlabel('Position (\circ)');
-        ylabel('BOLD Z-score');
-    else
-        set(gca,'YTickLabel',[]);
-    end
-    
-    set(gca,'XTick',-180:180:180,'Box','off','TickDir','out','FontSize',14);
-    
-end
-
-match_ylim(get(gcf,'Children'));
+% figure;
+% for vv = 1:length(ROIs)
+%     
+%     this_recons = nan(length(subj),length(angs));
+%     
+%     for ss = 1:length(subj)
+%         
+%         thisidx = all_subj == ss & all_ROIs == vv;
+%         tidx = ismember(tpts,plot_tpts);
+%         
+%         this_recons(ss,:) = mean( mean(all_recons(thisidx,:,tidx),3), 1 );
+%         
+%     end
+%     
+%     subplot(1,length(ROIs),vv); hold on;
+%     plot(angs,mean(this_recons,1),'-','LineWidth',2,'Color',ROI_colors(vv,:));
+%     
+%     thiserr = std(this_recons,[],1)/sqrt(length(subj));
+%     plot(angs,mean(this_recons,1)+thiserr,'--','LineWidth',0.5,'Color',ROI_colors(vv,:));
+%     plot(angs,mean(this_recons,1)-thiserr,'--','LineWidth',0.5,'Color',ROI_colors(vv,:));
+%     
+%     title(ROIs{vv});
+%     
+%     if vv == 1
+%         xlabel('Position (\circ)');
+%         ylabel('BOLD Z-score');
+%     else
+%         set(gca,'YTickLabel',[]);
+%     end
+%     
+%     set(gca,'XTick',-180:180:180,'Box','off','TickDir','out','FontSize',14);
+%     
+% end
+% 
+% match_ylim(get(gcf,'Children'));
 
 
 
@@ -777,6 +802,9 @@ match_ylim(get(gcf,'Children'));
 % if proto_ROI is not empty, draw that ROI's timecourse behind the 'true'
 % timecourse in all ROIs (except this ROI)
 
+
+% TEMPORARILY: we'll skip over these (TODO)
+if 0
 proto_ROI = 4; % V3AB
 
 proto_color = [0.7 0.7 0.7];
@@ -873,6 +901,6 @@ set(get(gcf,'Children'),'YLim',[-0.075 1.2],'TickDir','out','TickLength',[1 1]*0
 %set(gcf,'Position',[216         866        1760         117]);
 
 
-
+end
 
 return
