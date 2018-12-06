@@ -518,7 +518,7 @@ for vv = 1:length(ROIs)
         plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(cc,:));
         
         % plot error bars
-        plot(myTR*tpts.*[1;1],mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(cc,:));
+        plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(cc,:));
         
         
         yline(0);
@@ -560,7 +560,7 @@ for vv = 1:length(ROIs)
     
     
     plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(3,:));
-    plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(3,:));
+    plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(3,:));
     
     yline(0);
     

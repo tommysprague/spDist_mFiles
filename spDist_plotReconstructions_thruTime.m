@@ -20,12 +20,14 @@ task_dir = 'spDist';
 
 if nargin < 1 || isempty(subj)
     subj = {'CC','KD','AY','MR','XL'};
+    %subj = {'XL'};
 end
 
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
     sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    %sess = {{'spDist1','spDist2'},}
 end
 
 if nargin < 3 || isempty(ROIs)
@@ -518,7 +520,7 @@ for vv = 1:length(ROIs)
         plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(cc,:));
         
         % plot error bars
-        plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(cc,:));
+        plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(cc,:));
         
         
         yline(0);
@@ -560,7 +562,7 @@ for vv = 1:length(ROIs)
     
     
     plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(3,:));
-    plot(myTR*tpts,mean(thisd,1)+[-1 1].*thise,':','LineWidth',1,'Color',fidelity_colors(3,:));
+    plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(3,:));
     
     yline(0);
     
