@@ -19,15 +19,15 @@ trn_dir = 'wmChoose';
 
 trn_sess = 'MGSMap'; % files to load for training
 
-root =  spDist_loadRoot;% '/deathstar/data/PrismaPilotScans/';
+root =  spDist_loadRoot;
 trn_root = sprintf('%s/../wmChoose_scanner/',root);
 
 if nargin < 1
-    subj = {'CC','AY','KD','MR','XL'};
+    subj = {'AY','CC','EK','KD','MR','SF','XL'};
         
 end
 if nargin < 2
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
     
 end
 

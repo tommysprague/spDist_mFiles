@@ -19,14 +19,14 @@ root = spDist_loadRoot;
 task_dir = 'spDist';
 
 if nargin < 1 || isempty(subj)
-    subj = {'CC','KD','AY','MR','XL'};
+    subj = {'CC','KD','AY','MR','XL','SF'};
     %subj = {'XL'};
 end
 
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
     %sess = {{'spDist1','spDist2'},}
 end
 

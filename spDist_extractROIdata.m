@@ -1,4 +1,4 @@
-% spDist_extractROIdata.m
+% spvDist_extractROIdata.m
 %
 % saves data into ROI files for each subj, session; training & testing data
 % saved separately within each file; concatenates L and R hemis
@@ -16,12 +16,13 @@ task_dir = 'spDist';
 root = spDist_loadRoot;
 
 if nargin < 1 || isempty(subj)
-    subj = {'AY','CC','KD','MR','XL'};
+    %subj = {'AY','CC','KD','MR','XL'};
+     subj = {'XL'}
 end
 
 if nargin < 2 || isempty(subj)
     % TODO: if no defined sessions, use all....
-    sess_template = {'spDist1','spDist2'};
+    sess_template = {'spDist2'};
     sess = cell(length(subj),1); for ss = 1:length(subj); sess{ss} = sess_template; end 
     clear sess_template
 end

@@ -16,7 +16,7 @@ task_dir = 'spDist';
 root = spDist_loadRoot;
 
 if nargin < 1 || isempty(subj)
-    subj = {'AY','CC','KD','MR','XL'};
+    subj = {'AY','CC','EK','KD','MR','SF','XL'};
 end
 
 if nargin < 2 || isempty(sess)
