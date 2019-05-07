@@ -12,6 +12,8 @@ else
     this_computer = char(java.net.InetAddress.getLocalHost.getHostName);
     if strcmpi(this_computer,'tcs-compute-1')
         root = '/mnt/LabShare/projects/nyu/spDist/';
+    elseif strcmpi(this_computer,'tcs-precision')
+        root = 'Z:/projects/nyu/spDist/';
     else % for vader.psych.nyu.edu
         root = '/deathstar/data/spDist/';
     end
