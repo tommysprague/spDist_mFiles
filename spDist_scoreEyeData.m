@@ -18,14 +18,16 @@ function spDist_scoreEyeData(subj,sess,WHICH_EXCL)
 
 close all;
 root = spDist_loadRoot;
-ifg_fn = '~/Documents/MATLAB/toolboxes_dev/iEye_ts/examples/p_500hz.ifg';
-%ifg_fn = '/Volumes/home/grace/iEye_ts-master/examples/p_500hz.ifg';
+%root = sprintf('/d/DATA/data/spDist/')
+%ifg_fn = '~/Documents/MATLAB/toolboxes_dev/iEye_ts/examples/p_500hz.ifg';
+ifg_fn = '/Volumes/home/grace/iEye/examples/p_500hz.ifg';
+%ifg_fn = '~/d/data/home/grace/iEye_ts-master/examples/p_500hz.ifg';
 
 task_dir = 'spDist';
 
 if nargin < 1
-    subj = {'AY','CC','KD','MR','XL'};
-    
+    %subj = {'AY','CC','KD','MR','XL'};
+    subj = {'SF'}
 end
 
 if nargin < 2

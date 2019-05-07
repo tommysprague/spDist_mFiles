@@ -142,9 +142,13 @@ for pp = 1:length(params_of_interest)
         thise(ii,:) = mean(mean(all_err{ii}(:,pp,:,:),3),1); % mean over radial/tangential; distractor bin
     end
     
-    plot(1:size(thise,1),thise,'-','Color',[0.3 0.3 0.3]);
+    %plot(1:size(thise,1),thise,'-','Color',[0.3 0.3 0.3]);
+    %plot(1:size(thise,1),thise,'o-','Color',[0.5 0.5 0.5],'MarkerFaceColor','w','MarkerSize',5,'LineWidth',1);
     for ii = 1:length(all_err)
-        plot(ii+[-0.2 0.2],[1 1]*mean(thise(ii,:)),'-','LineWidth',2,'Color',cond_colors(ii,:));
+        %plot(ii+[-0.2 0.2],[1 1]*mean(thise(ii,:)),'-','LineWidth',2,'Color',cond_colors(ii,:));
+        tmpe = std(thise(ii,:))/sqrt(length(subj));
+        plot(ii*[1 1],mean(thise(ii,:))+tmpe*[-1 1],'-','LineWidth',1.5,'Color',cond_colors(ii,:));
+        plot(ii,mean(thise(ii,:)),'o','LineWidth',1.5,'Color',cond_colors(ii,:),'MarkerSize',7,'MarkerFaceColor','w');
     end
     
     xlim([0 length(all_err)+1]);
@@ -155,6 +159,7 @@ for pp = 1:length(params_of_interest)
         ylabel('Precision (avg std dev, \circ)');
     end
     title(param_str{pp});
+    ylim([0 2]);
 end
 
 

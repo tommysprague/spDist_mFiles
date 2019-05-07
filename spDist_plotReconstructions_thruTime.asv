@@ -19,13 +19,15 @@ root = spDist_loadRoot;
 task_dir = 'spDist';
 
 if nargin < 1 || isempty(subj)
-    subj = {'CC','KD','AY','MR','XL'};
+    subj = {'CC','KD','AY','MR','XL','SF'};
+    %subj = {'XL'};
 end
 
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    %sess = {{'spDist1','spDist2'},}
 end
 
 if nargin < 3 || isempty(ROIs)
@@ -361,6 +363,46 @@ end
 set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'YTick',0:5:10);
 set(gcf,'Position',[ 220        1058        1760         194]);
 match_clim(get(gcf,'Children'));
+
+
+%% plot distractor-removed target representation (all positions)
+
+figure;
+for vv = 1:length(ROIs)
+    
+    subplot(1,length(ROIs),vv);hold on;
+    
+    
+    thisd = nan(size(recons_nodist,3),size(recons_nodist,2),length(subj));
+    for ss = 1:length(subj)
+        thisidx = all_subj==ss & all_ROIs==vv & all_conds(:,1)==2;
+        thisd(:,:,ss) = squeeze(mean(all_recons{2}(thisidx,:,:),1)).';
+    end
+    imagesc(angs,tpts(tpts_to_plot)*myTR,mean(thisd(tpts_to_plot,:,:),3));
+    colormap viridis;
+    
+    
+    title(ROIs{vv});
+    
+    axis ij tight
+    set(gca,'XTick',-180:90:180);
+    if vv == 1
+        xlabel('Polar angle (\circ)');
+        ylabel(sprintf('%s - time (s)',cond_str{cc}));
+        set(gca,'XTickLabel',{'-180','','0','','180'});
+        
+    else
+        set(gca,'YTick',[],'XTickLabel',[],'YTickLabel',[]);
+    end
+    xlim([-180 180]);
+    
+end
+
+set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'YTick',0:5:10);
+set(gcf,'Position',[ 220        1058        1760         194]);
+match_clim(get(gcf,'Children'));
+sgtitle('Distractor trials; distractor representation removed');
+
 
 %% sort by relative distractor position
 % to start with, keep it simple and sort by all 7 bins

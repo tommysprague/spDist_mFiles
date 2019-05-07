@@ -19,14 +19,14 @@ root = spDist_loadRoot;
 task_dir = 'spDist';
 
 if nargin < 1 || isempty(subj)
-    subj = {'CC','KD','AY','MR','XL'};
+    subj = {'CC','KD','AY','MR','XL','SF'};
     %subj = {'XL'};
 end
 
 if nargin < 2 || isempty(sess)
     % each subj gets one cell, with strings for each sess
     % TODO: automate...
-    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
+    sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'}};
     %sess = {{'spDist1','spDist2'},}
 end
 
@@ -119,10 +119,13 @@ for ss = 1:length(subj)
                     all_recons{aa} = nan(nblankt,size(data.recons{aa},2),size(data.recons{aa},3));
                 end
                 
+                all_recons_nodist = nan(nblankt,size(data.recons_nodist,2),size(data.recons_nodist,3));
+                
                 all_conds = nan(nblankt,size(data.c_all,2));
                 all_angs = nan(nblankt,size(data.a_all,2));
                 
                 all_fidelity = nan(nblankt,size(data.recons{1},3),length(data.recons)); % timecoruse of fidelity for each alignment condition
+                all_fidelity_nodist = nan(nblankt,size(data.recons_nodist,3));
                 
                 all_subj = nan(nblankt,1);
                 all_ROIs = nan(nblankt,1);
@@ -145,6 +148,9 @@ for ss = 1:length(subj)
                 all_recons{aa}(thisidx,:,:) = data.recons{aa};
                 all_fidelity(thisidx,:,aa) = squeeze(mean(cosd(angs) .* data.recons{aa},2));
             end
+            
+            all_recons_nodist(thisidx,:,:) = data.recons_nodist;
+            all_fidelity_nodist(thisidx,:) =  squeeze(mean(cosd(angs) .* data.recons_nodist,2));
             
             all_conds(thisidx,:) = data.c_all;
             all_angs(thisidx,:) = data.a_all;
@@ -364,6 +370,46 @@ set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'
 set(gcf,'Position',[ 220        1058        1760         194]);
 match_clim(get(gcf,'Children'));
 
+
+%% plot distractor-removed target representation (all positions)
+
+figure;
+for vv = 1:length(ROIs)
+    
+    subplot(1,length(ROIs),vv);hold on;
+    
+    
+    thisd = nan(size(all_recons_nodist,3),size(all_recons_nodist,2),length(subj));
+    for ss = 1:length(subj)
+        thisidx = all_subj==ss & all_ROIs==vv & all_conds(:,1)==2;
+        thisd(:,:,ss) = squeeze(mean(all_recons_nodist(thisidx,:,:),1)).';
+    end
+    imagesc(angs,tpts(tpts_to_plot)*myTR,mean(thisd(tpts_to_plot,:,:),3));
+    colormap viridis;
+    
+    
+    title(ROIs{vv});
+    
+    axis ij tight
+    set(gca,'XTick',-180:90:180);
+    if vv == 1
+        xlabel('Polar angle (\circ)');
+        ylabel(sprintf('%s - time (s)',cond_str{cc}));
+        set(gca,'XTickLabel',{'-180','','0','','180'});
+        
+    else
+        set(gca,'YTick',[],'XTickLabel',[],'YTickLabel',[]);
+    end
+    xlim([-180 180]);
+    
+end
+
+set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'YTick',0:5:10);
+set(gcf,'Position',[ 220        1058        1760         194]);
+match_clim(get(gcf,'Children'));
+sgtitle('Distractor trials; distractor representation removed');
+
+
 %% sort by relative distractor position
 % to start with, keep it simple and sort by all 7 bins
 % and plot one figure for target-aligned and one for distractor-aligned
@@ -483,6 +529,7 @@ match_clim(get(gcf,'Children'));
 %% plot target fidelity on distractor-/+ trials and distractor fidelity
 % row 1: target fidelity
 % row 2: distractor fidelity
+% row 3: target fidelity (after removing distractor)
 
 % target: without and with distractor; distractor
 fidelity_colors = lines(7); fidelity_colors = fidelity_colors(4:6,:);
@@ -490,14 +537,15 @@ fidelity_colors = lines(7); fidelity_colors = fidelity_colors(4:6,:);
 t_markers = [0 4.5 12]; % onset of delay, distractor, response
 mh1 = nan(length(ROIs),length(t_markers));
 mh2 = nan(length(ROIs),length(t_markers));
+mh3 = nan(length(ROIs),length(t_markers));
 
-mu_fidelity = nan(length(ROIs),size(all_fidelity,2),3); % ROIs x tpts x targ w/ and w/out distractor; distractor
+mu_fidelity = nan(length(ROIs),size(all_fidelity,2),4); % ROIs x tpts x targ w/ and w/out distractor; distractor; with-distractor after removing distractor...
 
 figure;
 % first, plot the target fidelity
 for vv = 1:length(ROIs)
     
-    subplot(2,length(ROIs),vv); hold on;
+    subplot(3,length(ROIs),vv); hold on;
     
     
     
@@ -541,8 +589,8 @@ for vv = 1:length(ROIs)
     mh1(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
     
     
-    
-    subplot(2,length(ROIs),vv+length(ROIs)); hold on;
+    % ---------- SECOND ROW ---------------------
+    subplot(3,length(ROIs),vv+length(ROIs)); hold on;
     
     
     
@@ -579,6 +627,44 @@ for vv = 1:length(ROIs)
     
     
     clear thisd;
+    % ---------- THIRD ROW ------------ 
+    
+    subplot(3,length(ROIs),vv+2*length(ROIs)); hold on;
+    
+    thisd = nan(length(subj),size(all_fidelity,2));
+    
+    for ss = 1:length(subj)
+        
+        thisidx = all_conds(:,1)==2 & all_subj==ss & all_ROIs==vv;
+        thisd(ss,:) = mean(all_fidelity_nodist(thisidx,:));
+        
+    end
+    
+    mu_fidelity(vv,:,2+length(cu)) = mean(thisd,1);
+    
+    thise = std(thisd,[],1)/sqrt(length(subj));
+
+    
+    
+    plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(2,:));
+    plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(2,:));
+    
+    yline(0);
+    
+    if vv == 1
+        ylabel('WM fidelity (minus distractor)');
+        xlabel('Time (s)');
+    else
+        set(gca,'YTickLabel',[]);
+    end
+    
+    set(gca,'XTick',[0:6:24],'TickDir','out');
+    
+    mh3(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
+    
+    
+    clear thisd;
+    
     
     
 end
@@ -588,6 +674,7 @@ end
 myy = match_ylim(get(gcf,'Children'));
 set(mh1,'YData',[min(myy(:,1)) max(myy(:,2))]);
 set(mh2,'YData',[min(myy(:,1)) max(myy(:,2))]);
+set(mh3,'YData',[min(myy(:,1)) max(myy(:,2))]);
 
 set(gcf,'Position',[185         745        1843         470]);
 

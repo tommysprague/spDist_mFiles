@@ -330,7 +330,7 @@ for ss = 1:length(subj)
        % 9: RT
        
        % average distractor representation on distractor trials
-       dist_mu = squeeze(mean( recons{2}(data_tst.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
+       thismu = squeeze(mean( recons{2}(data_tst.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
        
        % variable for saving distractor-corrected single-item WM
        % representations
@@ -340,14 +340,14 @@ for ss = 1:length(subj)
        % CW)
        ang_diff = atan2d( sind(data_tst.dist_ang_all-data_tst.targ_ang_all), cosd(data_tst.dist_ang_all-data_tst.targ_ang_all) );
        
-       zero_idx = find(angs==0); % 45
+       zeroidx = find(angs==0); % 45
        
        % remove that average from each trial, after aligning based on
        % relative distractor location per trial
        for tt = 1:size(recons{1},1)
            
            % if distractor trial, remove average of all distractors
-           if data_tst.c_all(tt,1)==2
+           if data_tst.c_all(tt,1)==1
                
                % distance between distractor and WM position
                % ang_diff(tt)
@@ -359,7 +359,7 @@ for ss = 1:length(subj)
                % circularly shift thismu by -1*(ang_diff_idx-zeroidx)
                % (if positive, distractor is +ang compared to targ, which
                % is right, so shift left)
-               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,-1*(ang_diff_idx-zero_idx),1),-1);
+               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - circshift(thismu,);
                
            end
        end
@@ -383,7 +383,7 @@ for ss = 1:length(subj)
         end
         fprintf('saving to %s...\n',fn2s);
         
-        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','recons_nodist','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
+        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
         
         clear data c_all r_all p_all chan_resp w_all recons a_all;
         
