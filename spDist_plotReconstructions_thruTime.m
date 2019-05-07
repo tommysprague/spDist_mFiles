@@ -731,7 +731,7 @@ set(mh1,'YData',[min(myy(:,1)) max(myy(:,2))]);
 
 %% image view of above (ROIs x time)
 
-title_str = {'WM target: no distractor','WM target: distractor','Distractor'};
+title_str = {'WM target: no distractor','WM target: distractor','Distractor','WM target: distractor removed'};
 
 figure;
 for cc = 1:size(mu_fidelity,3)
