@@ -521,6 +521,69 @@ set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'
 set(gcf,'Position',[ 220        1058        1760         194]);
 match_clim(get(gcf,'Children'));
 
+
+%% align like distractor bins (and flip/average) - distractor-removed
+% goal here is to align cw/ccw distractor bins and flip one set to match
+% - for 0-bin, need to determine which trials are CW/CCW and flip
+%   accordingly
+% (like above, but using the _nodist reconstructions)
+
+% flip negative angles
+
+% look for all trials where <> is < 0, flipLR the reconstruction
+
+tmprel =  all_angs(:,2) - all_angs(:,1);
+this_rel = mod((tmprel+180), 360)-180;
+% sign of this matches all_conds(:,6) (relative distractor angle bin)
+
+flipidx = this_rel<0;
+
+all_recons_flipped_nodist = all_recons_nodist;
+all_recons_flipped_nodist(flipidx,:) = fliplr(all_recons_flipped_nodist(flipidx,:));
+
+dau = unique(abs(all_conds(all_conds(:,1)==2,6)));
+
+
+figure;
+for dd = 1:length(dau)
+    for vv = 1:length(ROIs)
+        
+        subplot(length(dau),length(ROIs),(dd-1)*length(ROIs)+vv);hold on;
+        
+        
+        thisd = nan(size(all_recons{1},3),size(all_recons_flipped_nodist,2),length(subj));
+        for ss = 1:length(subj)
+            thisidx = all_subj==ss & all_ROIs==vv & abs(all_conds(:,6))==dau(dd) & all_conds(:,1)==2;
+            thisd(:,:,ss) = squeeze(mean(all_recons_flipped_nodist(thisidx,:,:),1)).';
+        end
+        imagesc(angs,tpts(tpts_to_plot)*myTR,mean(thisd(tpts_to_plot,:,:),3));
+        colormap viridis;
+        plot(step_size*dau(dd),dist_time,'rv','LineWidth',2,'MarkerSize',3);
+        
+        if dd == 1
+            title(ROIs{vv});
+        end
+        axis ij tight
+        set(gca,'XTick',-180:90:180);
+        if vv == 1
+            xlabel('Polar angle (\circ)');
+            ylabel(sprintf('D %i - time (s)',dau(dd)));
+            if dd == length(dau)
+                set(gca,'XTickLabel',{'-180','','0','','180'});
+            end
+            
+        else
+            set(gca,'YTick',[],'XTickLabel',[],'YTickLabel',[]);
+        end
+        xlim([-180 180]);
+    end
+end
+
+set(get(gcf,'Children'),'TickDir','out','Box','off','TickLength',[0.015 0.015],'YTick',0:5:10);
+set(gcf,'Position',[ 220        1058        1760         194]);
+match_clim(get(gcf,'Children'));
+sgtitle('Distractor trials; distractor representation removed');
+
 %% plot average over early, middle, late delay for these
 
 
