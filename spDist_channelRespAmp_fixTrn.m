@@ -356,10 +356,10 @@ for ss = 1:length(subj)
                [~,ang_diff_idx] = min(abs(angs-ang_diff(tt)));
                
                
-               % circularly shift thismu by -1*(ang_diff_idx-zeroidx)
+               % circularly shift thismu by (ang_diff_idx-zeroidx)
                % (if positive, distractor is +ang compared to targ, which
-               % is right, so shift left)
-               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,-1*(ang_diff_idx-zero_idx),1),-1);
+               % is right, so shift RIGHT) (TCS, updated 5/9/2019)
+               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,(ang_diff_idx-zero_idx),1),-1);
                
            end
        end
