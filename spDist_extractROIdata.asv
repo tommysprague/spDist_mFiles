@@ -209,20 +209,29 @@ for ss = 1:length(subj)
                 
                 for subroi_idx = 1:length(this_ROIs)
                     
-                    mdata = niftiExtract(sess_nii{this_task_runs(tt)},roi_nii{rr}{subroi_idx});
                     
-                    
-                    d_all( thisidx,roi_rf_struct{rr}.ROIidx==subroi_idx) = mdata; % no manipulation
-                    d_allz(thisidx,roi_rf_struct{rr}.ROIidx==subroi_idx) = zscore(mdata,0,1); % Z-SCORE!!!
-                    r_all(thisidx) = tt;
-                    
-                    clear mdata;
                     
                 end
                 
+                
+                %mdata = load(ts_fn);
+                mdata = niftiExtract(sess_nii{this_task_runs(tt)},roi_nii{rr});
+%                 if tt == 1
+%                     % initialize variables (empty)
+%                     d_all  = nan(task_TRs*numel(this_task_runs),size(mdata,2));
+%                     d_allz = nan(task_TRs*numel(this_task_runs),size(mdata,2));
+%                 end
+                
+                
+                
+                d_all(thisidx,:) = mdata; % no manipulation
+                d_allz(thisidx,:) = zscore(mdata,0,1); % Z-SCORE!!!
+                r_all(thisidx) = tt;
+
+                
+                clear ts_fn mdata;
                 startidx_TR = thisidx(end)+1;
                 clear thisidx;
-                
             end
             
             
