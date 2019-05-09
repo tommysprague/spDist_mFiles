@@ -46,8 +46,8 @@ mypool = parpool(ncores); % use all possible cores
 parfor ii = 1:size(to_run,1)
     
     if to_run(ii,4) == 1
-        spDist_channelRespAmp_fixTrn({subj{to_run(ii,1)}},{sess{to_run(ii,2)}},{ROIs{to_run(ii,3)}},which_vox)
-        spDist_channelRespAmp_fixTrn_shuf({subj{to_run(ii,1)}},{sess{to_run(ii,2)}},{ROIs{to_run(ii,3)}},which_vox,shuf_iter)
+        spDist_channelRespAmp_fixTrn(     {subj{to_run(ii,1)}},{sess{to_run(ii,2)}},{ROIs{to_run(ii,3)}},which_vox,7:15)
+        spDist_channelRespAmp_fixTrn_shuf({subj{to_run(ii,1)}},{sess{to_run(ii,2)}},{ROIs{to_run(ii,3)}},which_vox,7:15,shuf_iter)
     end
     
 end
