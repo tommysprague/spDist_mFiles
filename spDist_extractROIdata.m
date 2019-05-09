@@ -126,7 +126,7 @@ for ss = 1:length(subj)
             roi_nii{rr}{tt} = niftiRead(roifn);
             
             % extract RF params from that ROI
-            roi_rf_params = niftiExtract(rfnii,roi_nii{rr});
+            roi_rf_params = niftiExtract(rfnii,roi_nii{rr}{tt});
             
             for ff = 1:length(rf_fields)
                 roi_rf_struct{rr}.(rf_fields{ff}) = horzcat(roi_rf_struct{rr}.(rf_fields{ff}),roi_rf_params(RF_paramIdx.(rf_fields{ff}),:));
