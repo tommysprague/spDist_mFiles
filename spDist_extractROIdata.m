@@ -188,8 +188,8 @@ for ss = 1:length(subj)
                 this_ROIs = ROIs{rr};
             end
             
-            d_all  = nan(task_TRs*numel(this_map_runs),size(roi_rf_struct{rr}.coordIdx,2));
-            d_allz = nan(task_TRs*numel(this_map_runs),size(roi_rf_struct{rr}.coordIdx,2));
+            d_all  = nan(task_TRs*numel(this_task_runs),size(roi_rf_struct{rr}.coordIdx,2));
+            d_allz = nan(task_TRs*numel(this_task_runs),size(roi_rf_struct{rr}.coordIdx,2));
 
             
             startidx_TR = 1;
