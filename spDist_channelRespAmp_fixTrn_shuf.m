@@ -348,9 +348,9 @@ for ss = 1:length(subj)
         % save with VE marker when which_vox < 1, otherwise, number of
         % vox
         if which_vox < 1
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1_shuf%i.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         else
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1_shuf%i.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         end
         fprintf('saving to %s...\n',fn2s);
         
