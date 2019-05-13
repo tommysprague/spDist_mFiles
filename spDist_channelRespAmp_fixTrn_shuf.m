@@ -62,6 +62,12 @@ chan_centers = linspace(360/n_chan,360,n_chan);
 
 % evaluate basis set at these
 angs = linspace(-176,180,90);
+
+
+% for debugging, also save out average reconstructions...
+n_angs_sv = 30;
+angs_sv = linspace(180+360/n_angs_sv,180,n_angs_sv);
+
 if nargin < 4
     which_vox = 0.1; % top 1000 vox
 end
@@ -133,10 +139,14 @@ for ss = 1:length(subj)
         % for each item (target; distractor), n_trials x n_delay_tpts x
         % n_shuff_iter
         all_fidelity = cell(length(align_to),1);
+        recons_sv = cell(length(align_to),1);
         for aa = 1:length(all_fidelity)
             all_fidelity{aa} = nan(size(data_tst.c_all,1),length(delay_tpts),n_shuf_iter);
+            recons_sv{aa} = nan(size(data_tst.c_all,1),length(angs_sv),length(delay_tpts),n_shuf_iter);
         end
 
+        
+        
         
         % shuffle! ~~~~~~~~~~~~
         for shuf_iter = 1:n_shuf_iter
@@ -271,6 +281,7 @@ for ss = 1:length(subj)
                     if ~isnan(rot_by)
                         this_rfTh = chan_centers-rot_by; % rotate basis
                         myb = build_basis_polar_mat(angs,this_rfTh);
+                        myb_save = build_basis_polar_mat(angs_sv,this_rfTh);
                     end
                     
                     % myb is length(angs) x n_channels
@@ -285,11 +296,12 @@ for ss = 1:length(subj)
                         % reconstruction
                         if ~isnan(rot_by)
                             recons{aa}(tt,:,tpt_idx) = (myb * chan_resp(tt,:,tpt_idx).').';
+                            recons_sv{aa}(tt,:,tpt_idx,shuf_iter) = (myb_save * chan_resp(tt,:,tpt_idx).').';
                         end
 
                     end
                     
-                    clear rot_by myb;
+                    clear rot_by myb myb_save;
                 end
                 
                 % compute fidelity
@@ -354,7 +366,7 @@ for ss = 1:length(subj)
         end
         fprintf('saving to %s...\n',fn2s);
         
-        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','all_fidelity','which_vox','sess_all','these_vox','a_all','fn_trn');
+        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','all_fidelity','recons_sv','which_vox','sess_all','these_vox','a_all','fn_trn');
         
         clear data c_all r_all p_all chan_resp w_all recons a_all all_fidelity;
         
