@@ -62,6 +62,12 @@ chan_centers = linspace(360/n_chan,360,n_chan);
 
 % evaluate basis set at these
 angs = linspace(-176,180,90);
+
+
+% for debugging, also save out average reconstructions...
+n_angs_recon = 30;
+angs_recon = linspace(180+360/n_angs_recon,180,n_angs_recon);
+
 if nargin < 4
     which_vox = 0.1; % top 1000 vox
 end
@@ -133,7 +139,9 @@ for ss = 1:length(subj)
         % for each item (target; distractor), n_trials x n_delay_tpts x
         % n_shuff_iter
         all_fidelity = cell(length(align_to),1);
-        for aa = 1= nan(size(data_tst.c_all,1),length(delay_tpts),n_shuf_iter);
+        for aa = 1:length(all_fidelity)
+            all_fidelity{aa} = nan(size(data_tst.c_all,1),length(delay_tpts),n_shuf_iter);
+        end
 
         
         % shuffle! ~~~~~~~~~~~~
@@ -226,14 +234,13 @@ for ss = 1:length(subj)
             
             %% compute channel weights using only training set (wmMapSpace)
             
-            fprintf('computing channel weights\n');
+            %fprintf('computing channel weights\n');
             w = X\trn;
-            w_all = w;
             
             % ~~~~~~~~ then, reconstruct each time point ~~~~~~~~~~
             
             for tpt_idx = 1:length(delay_tpts)
-                fprintf('TPT: %i\n',tpt_idx);
+                %fprintf('TPT: %i\n',tpt_idx);
                 
                 
                 tstdata = mean(data_tst.dt_allz(:,:,delay_idx(tpt_idx)),3);
@@ -243,7 +250,7 @@ for ss = 1:length(subj)
                 
                 %% use (optimized) design matrix to compute channel responses using testing data
                 
-                fprintf('computing channel responses\n');
+                %fprintf('computing channel responses\n');
                 
                 chan_resp(:,:,tpt_idx) = (inv(w*w.')*w*tst.').';
                 
@@ -257,8 +264,6 @@ for ss = 1:length(subj)
             
             %% after all channel resp computed, coregister each trial
             
-            % basis set used for 'raw' reconstructions
-            myb_orig = build_basis_polar_mat(angs,chan_centers);
             
             for aa = 1:length(align_to)
                 recons{aa} = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
@@ -272,7 +277,9 @@ for ss = 1:length(subj)
                     if ~isnan(rot_by)
                         this_rfTh = chan_centers-rot_by; % rotate basis
                         myb = build_basis_polar_mat(angs,this_rfTh);
+                        myb_save = build_basis_polar_mat(angs_recon,this_rfTh);
                     end
+                    
                     % myb is length(angs) x n_channels
                     % we want to weight each channel (col) by this trials' channel
                     % activation
@@ -285,13 +292,12 @@ for ss = 1:length(subj)
                         % reconstruction
                         if ~isnan(rot_by)
                             recons{aa}(tt,:,tpt_idx) = (myb * chan_resp(tt,:,tpt_idx).').';
+                            recons{aa}(tt,:,tpt_idx,shuf_iter) = (myb_save * chan_resp(tt,:,tpt_idx).').';
                         end
 
                     end
                     
-                    
-                    
-                    clear rot_by myb;
+                    clear rot_by myb myb_s;
                 end
                 
                 % compute fidelity
@@ -350,15 +356,15 @@ for ss = 1:length(subj)
         % save with VE marker when which_vox < 1, otherwise, number of
         % vox
         if which_vox < 1
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1_shuf%i.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         else
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1_shuf%i.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         end
         fprintf('saving to %s...\n',fn2s);
         
-        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','recons_nodist','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
+        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','all_fidelity','which_vox','sess_all','these_vox','a_all','fn_trn');
         
-        clear data c_all r_all p_all chan_resp w_all recons a_all;
+        clear data c_all r_all p_all chan_resp w_all recons a_all all_fidelity;
         
         
         
