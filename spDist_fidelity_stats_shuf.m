@@ -393,7 +393,11 @@ for vv = 1:length(ROIs)
                 set(gca,'YTickLabel',[]);
             end
             
-            set(gca,'XTick',[0:6:24],'TickDir','out','XTickLabel',[]);
+            if gg ~= length(cond_group)
+                set(gca,'XTick',[0:6:24],'TickDir','out','XTickLabel',[]);
+            else
+                set(gca,'XTick',[0:6:24],'TickDir','out');
+            end
             
             
             % plot stats
