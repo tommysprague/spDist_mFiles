@@ -31,8 +31,8 @@ sess = {{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDist1','spDist2'},{'spDi
 %sess = {{'spDist1','spDist2'},{'spDist1','spDist2'}};
 
 
-%ROIs = {'V1','V2','V3','V3AB','IPS0','IPS1','IPS2','IPS3','sPCS'};
-ROIs = {'V1','V2','V3'};
+ROIs = {'V1','V2','V3','V3AB','IPS0','IPS1','IPS2','IPS3','sPCS'};
+%ROIs = {'V1','V2','V3'};
 %ROIs = {'V1','V2','V3','V3AB','hV4','VO1','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS'}; % for VSS, drop iPCS and VO2, those regions are missing significant representations in some subj
 %ROIs = {'V1','V3AB','VO1','LO1','TO1','IPS0','IPS2','sPCS'};
 func_suffix = 'surf';
@@ -210,6 +210,8 @@ for cc = 1:size(conds_of_interest,1)
     all_T{cc}                    = nan(length(ROIs),size(all_fidelity{1},2));
     all_ci{cc}                   = nan(length(ROIs),size(all_fidelity{1},2),length(subj));
     
+    all_mu_ci{cc}                = nan(length(ROIs),size(all_fidelity[1},2)); % CI of mean across subj
+    
     fdr_thresh{cc} = nan(length(ROIs),1);
     
     for vv = 1:length(ROIs)
@@ -227,6 +229,8 @@ for cc = 1:size(conds_of_interest,1)
                 all_subj_fidelity{cc}(vv,tpt_idx,ss) = real_data(ss);
                 
             end
+            
+            all_ci{cc}(vv,tpt_idx) = prctile(mean(shuf_data,1),ci_level);
             
             [~,~,~,tmp_stats_shuf] = ttest(shuf_data);
             
@@ -329,6 +333,167 @@ for cc = 1:size(conds_of_interest,1)
     end
     sgtitle(cond_str{cc});
 end
+
+
+
+%% plot averages, like in plotReconstructions, with option to include 95% CIs on null fidelity
+%
+% also plot significant time points (filled/open circles for FDR/uncorr)
+
+% row 1: target fidelity
+% row 2: distractor fidelity
+% row 3: target fidelity (after removing distractor)
+
+% target: without and with distractor; distractor
+fidelity_colors = lines(7); fidelity_colors = fidelity_colors(4:6,:);
+
+t_markers = [0 4.5 12]; % onset of delay, distractor, response
+mh1 = nan(length(ROIs),length(t_markers));
+mh2 = nan(length(ROIs),length(t_markers));
+mh3 = nan(length(ROIs),length(t_markers));
+
+%mu_fidelity = nan(length(ROIs),size(all_fidelity,2),4); % ROIs x tpts x targ w/ and w/out distractor; distractor; with-distractor after removing distractor...
+
+figure;
+% first, plot the target fidelity
+for vv = 1:length(ROIs)
+    
+    subplot(3,length(ROIs),vv); hold on;
+    
+    
+    % condition label; which fidelity/recon to sort by
+    for cc = 1:size(conds_of_interest,1)
+        
+        thisd = nan(length(subj),size(all_fidelity{1},2));
+        
+        for ss = 1:length(subj)
+            
+            thisidx = all_conds(:,1)==conds_of_interest(cc) & all_subj==ss & all_ROIs==vv;
+            thisd(ss,:) = mean(all_fidelity(thisidx,:,1));
+            
+        end
+        
+        mu_fidelity(vv,:,cc) = mean(thisd,1);
+        
+        thise = std(thisd,[],1)/sqrt(length(subj));
+        
+        % plot mean
+        plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(cc,:));
+        
+        % plot error bars
+        plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(cc,:));
+        
+        
+        yline(0);
+        % TODO: plot std error across subj
+        
+        title(ROIs{vv});
+        if vv == 1
+            ylabel('Target fidelity');
+        else
+            set(gca,'YTickLabel',[]);
+        end
+        
+        set(gca,'XTick',[0:6:24],'TickDir','out','XTickLabel',[]);
+        
+        clear thisd thise;
+    end
+    
+    mh1(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
+    
+    
+    % ---------- SECOND ROW ---------------------
+    subplot(3,length(ROIs),vv+length(ROIs)); hold on;
+    
+    
+    
+    thisd = nan(length(subj),size(all_fidelity,2));
+    
+    for ss = 1:length(subj)
+        
+        thisidx = all_conds(:,1)==2 & all_subj==ss & all_ROIs==vv;
+        thisd(ss,:) = mean(all_fidelity(thisidx,:,2));
+        
+    end
+    
+    mu_fidelity(vv,:,1+length(cu)) = mean(thisd,1);
+    
+    thise = std(thisd,[],1)/sqrt(length(subj));
+
+    
+    
+    plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(3,:));
+    plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(3,:));
+    
+    yline(0);
+    
+    if vv == 1
+        ylabel('Distractor fidelity');
+        xlabel('Time (s)');
+    else
+        set(gca,'YTickLabel',[]);
+    end
+    
+    set(gca,'XTick',[0:6:24],'TickDir','out');
+    
+    mh2(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
+    
+    
+    clear thisd;
+    % ---------- THIRD ROW ------------ 
+    
+    subplot(3,length(ROIs),vv+2*length(ROIs)); hold on;
+    
+    thisd = nan(length(subj),size(all_fidelity,2));
+    
+    for ss = 1:length(subj)
+        
+        thisidx = all_conds(:,1)==2 & all_subj==ss & all_ROIs==vv;
+        thisd(ss,:) = mean(all_fidelity_nodist(thisidx,:));
+        
+    end
+    
+    mu_fidelity(vv,:,2+length(cu)) = mean(thisd,1);
+    
+    thise = std(thisd,[],1)/sqrt(length(subj));
+
+    
+    
+    plot(myTR*tpts,mean(thisd,1),'-','LineWidth',1.5,'Color',fidelity_colors(2,:));
+    plot((myTR*tpts.*[1;1]).',(mean(thisd,1)+[-1;1].*thise).','--','LineWidth',1,'Color',fidelity_colors(2,:));
+    
+    yline(0);
+    
+    if vv == 1
+        ylabel('WM fidelity (minus distractor)');
+        xlabel('Time (s)');
+    else
+        set(gca,'YTickLabel',[]);
+    end
+    
+    set(gca,'XTick',[0:6:24],'TickDir','out');
+    
+    mh3(vv,:) = plot(t_markers.*[1;1],[0 .1],'-','Color',[0.7 0.7 0.7],'LineWidth',0.75);
+    
+    
+    clear thisd;
+    
+    
+    
+end
+
+%myy = cell2mat(get(get(gcf,'Children'),'YLim'));
+
+myy = match_ylim(get(gcf,'Children'));
+set(mh1,'YData',[min(myy(:,1)) max(myy(:,2))]);
+set(mh2,'YData',[min(myy(:,1)) max(myy(:,2))]);
+set(mh3,'YData',[min(myy(:,1)) max(myy(:,2))]);
+
+set(gcf,'Position',[185         745        1843         470]);
+
+
+
+
 
 %% plot first significant representation
 

@@ -423,5 +423,171 @@ set(gcf,'Position',[185         745        1843         470]);
 
 
 % NOTE: other aspects of plotting from MGSMap_fidelity_stats_shuf.m were
-% not edited, so can be copied/pasted from that file if desired
+% not edited, so can be copied/pasted from that f
+
+%% plot first significant representation
+
+% NOTE: using nanmean, since some subj have no detectable info
+
+figure;
+axis ij;
+hold on;
+
+plot_indiv_subj = 1;
+
+if plot_indiv_subj == 1
+    for ss = 1:length(subj)
+        %plot(all_representation_onset(:,ss),1:length(ROIs),'-','Color',subj_colors(ss,:))
+        plot(all_representation_onset(:,ss),1:length(ROIs),'-','Color',info_colors(1,:))
+    end
+end
+
+plot(nanmean(all_representation_onset,2),1:length(ROIs),'-','LineWidth',1.5,'Color',info_colors(1,:));
+for vv = 1:length(ROIs)
+    
+    
+    if plot_indiv_subj == 0 % if no single-subj, draw error bars
+        plot(nanmean(all_representation_onset(vv,:),2)*[1 1] + nanstd(all_representation_onset(vv,:),[],2)*[-1 1]./sqrt(length(subj)),vv*[1 1],'k-','LineWidth',1.5 );
+    end
+    
+    plot(nanmean(all_representation_onset(vv,:),2),vv,'o','MarkerSize',10,'Color',info_colors(1,:),'MarkerFaceColor',info_colors(1,:));
+    
+    if plot_indiv_subj == 1
+        for ss = 1:length(subj)
+            %plot(all_representation_onset(vv,ss),vv,'o','MarkerSize',5,'Color',subj_colors(ss,:),'MarkerFaceColor','w','LineWidth',1.5);
+            
+        end
+        
+    end
+end
+
+set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out','FontSize',14);
+xlabel('Time (s)');
+title('First detectable information');
+xlim([-1 12]);
+ylim([-0.5 0.5]+[1 length(ROIs)]);
+
+
+
+%% plot timepoint of strongest representation
+
+figure;
+axis ij;
+hold on;
+
+plot_indiv_subj = 1;
+
+if plot_indiv_subj == 1
+    for ss = 1:length(subj)
+        plot(all_representation_max(:,ss),1:length(ROIs),'-','Color',subj_colors(ss,:))
+    end
+end
+
+plot(nanmean(all_representation_max,2),1:length(ROIs),'k-','LineWidth',1.5);
+for vv = 1:length(ROIs)
+    
+    
+    if plot_indiv_subj == 0 % if no single-subj, draw error bars
+        plot(nanmean(all_representation_max(vv,:),2)*[1 1] + nanstd(all_representation_max(vv,:),[],2)*[-1 1]./sqrt(length(subj)),vv*[1 1],'k-','LineWidth',1.5 );
+    end
+    
+    plot(nanmean(all_representation_max(vv,:),2),vv,'o','MarkerSize',10,'Color','k','MarkerFaceColor','k');
+    
+    if plot_indiv_subj == 1
+        for ss = 1:length(subj)
+            plot(all_representation_max(vv,ss),vv,'o','MarkerSize',5,'Color',subj_colors(ss,:),'MarkerFaceColor','w','LineWidth',1.5);
+        end
+        
+    end
+end
+
+set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out','FontSize',14);
+xlabel('Time (s)');
+title('Strongest representation');
+xlim([-1 12]);
+ylim([-0.5 0.5]+[1 length(ROIs)]);
+
+
+
+%% Overlay first and max (only mean)
+
+figure;
+axis ij;
+hold on;
+
+
+% FIRST info
+plot((nanmean(all_representation_onset,2)*[1 1] + nanstd(all_representation_onset,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',1.5,'Color',info_colors(1,:) );
+plot(nanmean(all_representation_onset,2),1:length(ROIs),'o-','LineWidth',1.5,'Color',info_colors(1,:),'MarkerFaceColor',info_colors(1,:),'MarkerSize',10);
+
+
+% MAX info
+plot((nanmean(all_representation_max,2)*[1 1] + nanstd(all_representation_max,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',1.5,'Color',info_colors(2,:) );
+plot(nanmean(all_representation_max,2),1:length(ROIs),'o-','LineWidth',1.5,'Color',info_colors(2,:),'MarkerFaceColor',info_colors(2,:),'MarkerSize',10);
+
+
+set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out','FontSize',14);
+xlabel('Time (s)');
+%title('Strongest representation');
+xlim([-1 12]);
+ylim([-0.5 0.5]+[1 length(ROIs)]);
+
+
+
+%% TODO: layer those on top of ROI x time fidelity plots?
+
+
+
+% %% figure of fidelity over time for each ROI (avg over subj)
+% figure; hold on;
+% imagesc(myTR*tpts(tpts_to_plot),1:length(ROIs),all_m_fidelity(:,tpts_to_plot));
+% set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out');
+% xlabel('Time (s)');
+% axis ij tight;
+% title('Fidelity (BOLD Z-score)');
+
+%
+% %% figure of fidelity over time for each ROI (avg over subj) - NORMALIZED
+% % (normalized so average timecourse peaks at 1 - so divide by max)
+figure; hold on;
+all_m_fidelity_norm = all_m_fidelity./(max(all_m_fidelity(:,tpts_to_plot),[],2));
+imagesc(myTR*tpts(tpts_to_plot)+myTR/2,1:length(ROIs),all_m_fidelity_norm(:,tpts_to_plot));
+colormap viridis;
+set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out','Box','off');
+xlabel('Time (s)');
+axis ij tight;
+title('Normalized fidelity');
+
+% plot first; max (w/ white lines behind so visible)
+
+% FIRST info
+plot((nanmean(all_representation_onset,2)*[1 1] + nanstd(all_representation_onset,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',3.5,'Color',[1 1 1] );
+plot((nanmean(all_representation_onset,2)*[1 1] + nanstd(all_representation_onset,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',1.5,'Color',info_colors(1,:) );
+plot(nanmean(all_representation_onset,2),1:length(ROIs),'-','LineWidth',3.5,'Color',[1 1 1]);
+plot(nanmean(all_representation_onset,2),1:length(ROIs),'-','LineWidth',1.5,'Color',info_colors(1,:));
+plot(nanmean(all_representation_onset,2),1:length(ROIs),'o','LineWidth',1,'Color',[1 1 1],'MarkerFaceColor',info_colors(1,:),'MarkerSize',10);
+
+
+% MAX info
+plot((nanmean(all_representation_max,2)*[1 1] + nanstd(all_representation_max,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',3.5,'Color',[1 1 1] );
+plot((nanmean(all_representation_max,2)*[1 1] + nanstd(all_representation_max,[],2)*[-1 1]./sqrt(length(subj))).',((1:length(ROIs)).'*[1 1]).','-','LineWidth',1.5,'Color',info_colors(2,:) );
+
+plot(nanmean(all_representation_max,2),1:length(ROIs),'-','LineWidth',3.5,'Color',[1 1 1]);
+plot(nanmean(all_representation_max,2),1:length(ROIs),'-','LineWidth',1.5,'Color',info_colors(2,:));
+plot(nanmean(all_representation_max,2),1:length(ROIs),'o','LineWidth',1,'Color',[1 1 1],'MarkerFaceColor',info_colors(2,:),'MarkerSize',10);
+
+set(gcf,'Position',[1000        1087         492         251]); % for SFN talk 2018 (V1-V3, V3AB, IPS0-3, sPCS)
+
+%
+%
+% %% plot of mean R2 per ROI through time (not normalized)
+% figure;
+% imagesc(myTR*tpts(tpts_to_plot),1:length(ROIs),mean(all_r2(:,tpts_to_plot,:),3));
+% set(gca,'YTick',1:length(ROIs),'YTickLabel',ROIs,'TickDir','out');
+% tmp_clim = get(gca,'CLim');
+% set(gca,'CLim',[0 tmp_clim(2)]);
+% xlabel('Time (s)');
+% title('Cross-validated R^2');
+
+%% horizontal 'bar' graph of onset of info...? (maybe a different fcn)
 
