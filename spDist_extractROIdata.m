@@ -50,8 +50,11 @@ root_ROI = root;
 
 if nargin < 3 || isempty(ROIs)
     ROIs = {'V1','V2','V3','V3AB','hV4','VO1','VO2','LO1','LO2','TO1','TO2','IPS0','IPS1','IPS2','IPS3','sPCS','iPCS'};
+    % ROIs = {{'V1','V2','V3'},{'V3AB'},{'IPS0','IPS1'},{'IPS2','IPS3'},{'sPCS'}};
+
 end
 
+roi_str = cell(size(ROIs));
 
 
 task_TRs = 372;  % number of TRs in 'choose' task
@@ -75,6 +78,9 @@ RF_paramIdx.x0    = 6;
 RF_paramIdx.y0    = 7;
 RF_paramIdx.b     = 8;
 
+rf_fields = fieldnames(RF_paramIdx);
+
+
 for ss = 1:length(subj)
     
     % load all ROIs, RF data (/deathstar/data/vRF_tcs/MR/RF1/MR_RF1_vista//deathstar/data/vRF_tcs/KD/RF1/KD_RF1_vista/RF_surf_25mm-fFit.nii.gz
@@ -84,33 +90,57 @@ for ss = 1:length(subj)
     rfnii = niftiRead(rf_file);
     
     roi_nii = cell(length(ROIs),1);
-    roi_rf_params = cell(length(ROIs),1); 
+    %roi_rf_params = cell(length(ROIs),1); 
+    
     roi_rf_struct = cell(length(ROIs),1); 
     for rr = 1:length(ROIs)
-        % updated TCS 9/14/2017 - ROIs will live w/in expt dir, not RF dir,
-        % because of different resolution...
-        %roifn = sprintf('%s%s/%s/%s_%s_vista/roi/bilat.%s.nii.gz',root_rf,subj{ss},sess_rf{ss},subj{ss},sess_rf{ss},ROIs{rr});
-        roifn = sprintf('%s%s/rois/bilat.%s.nii.gz',root_ROI,subj{ss},ROIs{rr});
-        fprintf('Loading ROI data from %s\n',roifn);
-        roi_nii{rr} = niftiRead(roifn);
         
-        % extract RF params from that ROI
-        roi_rf_params{rr} = niftiExtract(rfnii,roi_nii{rr});
         
-        % make into a rf struct for saving like before
-        roi_rf_struct{rr}.x0    = roi_rf_params{rr}(RF_paramIdx.x0,:);
-        roi_rf_struct{rr}.y0    = roi_rf_params{rr}(RF_paramIdx.y0,:);
-        roi_rf_struct{rr}.sigma = roi_rf_params{rr}(RF_paramIdx.sigma,:);
-        roi_rf_struct{rr}.exp   = roi_rf_params{rr}(RF_paramIdx.exp,:);
-        roi_rf_struct{rr}.b     = roi_rf_params{rr}(RF_paramIdx.b,:);
-        roi_rf_struct{rr}.phase = roi_rf_params{rr}(RF_paramIdx.phase,:);
-        roi_rf_struct{rr}.ecc   = roi_rf_params{rr}(RF_paramIdx.ecc,:);
-        roi_rf_struct{rr}.ve    = roi_rf_params{rr}(RF_paramIdx.ve,:);
+        % is this ROI a cell? if not, make it a cell
+        if ~iscell(ROIs{rr})
+            this_ROIs = {ROIs{rr}};
+        else
+            this_ROIs = ROIs{rr};
+        end
         
-        % for putting back into RAI nii file
-        roi_rf_struct{rr}.coordIdx = find(roi_nii{rr}.data(:)~=0);
+        % for saving files
+        roi_str{rr} = horzcat(this_ROIs{:});
+        roi_nii{rr} = cell(length(this_ROIs),1);
+
+        % initialize roi_rf_struct{rr} fields
+        roi_rf_struct{rr} = struct;
+        for ff = 1:length(rf_fields)
+            roi_rf_struct{rr}.(rf_fields{ff}) = [];
+        end
+        roi_rf_struct{rr}.coordIdx = [];
+        roi_rf_struct{rr}.ROIidx = []; % which ROI each voxel comes from (from thisROI)
         
-        clear roifn;
+        for tt = 1:length(this_ROIs)
+            
+            
+            % updated TCS 9/14/2017 - ROIs will live w/in expt dir, not RF dir,
+            % because of different resolution...
+            %roifn = sprintf('%s%s/%s/%s_%s_vista/roi/bilat.%s.nii.gz',root_rf,subj{ss},sess_rf{ss},subj{ss},sess_rf{ss},ROIs{rr});
+            roifn = sprintf('%s%s/rois/bilat.%s.nii.gz',root_ROI,subj{ss},this_ROIs{tt});
+            fprintf('Loading ROI data from %s\n',roifn);
+            roi_nii{rr}{tt} = niftiRead(roifn);
+            
+            % extract RF params from that ROI
+            roi_rf_params = niftiExtract(rfnii,roi_nii{rr}{tt});
+            
+            for ff = 1:length(rf_fields)
+                roi_rf_struct{rr}.(rf_fields{ff}) = horzcat(roi_rf_struct{rr}.(rf_fields{ff}),roi_rf_params(RF_paramIdx.(rf_fields{ff}),:));
+            end
+            
+            
+            % for putting back into RAI nii file
+            roi_rf_struct{rr}.coordIdx = horzcat(roi_rf_struct{rr}.coordIdx, find(roi_nii{rr}{tt}.data(:)~=0).');
+
+            roi_rf_struct{rr}.ROIidx = horzcat(roi_rf_struct{rr}.ROIidx,ones(1,size(roi_rf_params,2))*tt);
+
+            
+            clear roifn;
+        end
     end
     
     
@@ -136,11 +166,9 @@ for ss = 1:length(subj)
         % get # of TRs from each run this session
         nTRs = cellfun(@(x) x.dim(4),sess_nii);
         
-        %this_map_runs = find(nTRs==map_TRs);
         this_task_runs = find(nTRs==task_TRs);
         
-        %r_map = nan(map_TRs*numel(this_map_runs),1);      % run
-        %sess_map = sess_idx * ones(map_TRs*numel(this_map_runs),1);
+
         r_all = nan(task_TRs*numel(this_task_runs),2); % run, subrun
         sess_all = sess_idx * ones(task_TRs*numel(this_task_runs),1);
         
@@ -148,39 +176,53 @@ for ss = 1:length(subj)
         % extract, for each ROI, the time series from each  mapping run &
         % concatenate
         
-        %fn_map = cell(length(this_map_runs),1);
         fn_all = cell(length(this_task_runs),1); % empty for now
         
         for rr = 1:length(ROIs)
             
-            startidx = 1;
+            % since we're indexing into original ROIs, need to turn
+            % single-ROIs into cells again (like above)
+            if ~iscell(ROIs{rr})
+                this_ROIs = {ROIs{rr}};
+            else
+                this_ROIs = ROIs{rr};
+            end
+            
+            d_all  = nan(task_TRs*numel(this_task_runs),size(roi_rf_struct{rr}.coordIdx,2));
+            d_allz = nan(task_TRs*numel(this_task_runs),size(roi_rf_struct{rr}.coordIdx,2));
+
+            
+            startidx_TR = 1;
             
             for tt = 1:length(this_task_runs)
                 
                 fprintf('TASK (spatial distractor) %i: %s\n',tt,sess_nii{this_task_runs(tt)}.fname);
-                %mdata = load(ts_fn);
-                mdata = niftiExtract(sess_nii{this_task_runs(tt)},roi_nii{rr});
-                if tt == 1
-                    % initialize variables (empty)
-                    d_all  = nan(task_TRs*numel(this_task_runs),size(mdata,2));
-                    d_allz = nan(task_TRs*numel(this_task_runs),size(mdata,2));
-                end
-                
-                
-                thisidx = startidx:(startidx+task_TRs-1);
-                
-                d_all(thisidx,:) = mdata; % no manipulation
-                d_allz(thisidx,:) = zscore(mdata,0,1); % Z-SCORE!!!
-                r_all(thisidx) = tt;
-                
-                
+
+                % which TRs we're extracting
+                thisidx = startidx_TR:(startidx_TR+task_TRs-1);
+
+                %
                 if rr == 1
                     fn_all{tt} = sess_nii{this_task_runs(tt)}.fname; % save the files we loaded from
                 end
                 
-                clear ts_fn mdata;
-                startidx = thisidx(end)+1;
+                
+                for subroi_idx = 1:length(this_ROIs)
+                    
+                    mdata = niftiExtract(sess_nii{this_task_runs(tt)},roi_nii{rr}{subroi_idx});
+                    
+                    
+                    d_all( thisidx,roi_rf_struct{rr}.ROIidx==subroi_idx) = mdata; % no manipulation
+                    d_allz(thisidx,roi_rf_struct{rr}.ROIidx==subroi_idx) = zscore(mdata,0,1); % Z-SCORE!!!
+                    r_all(thisidx) = tt;
+                    
+                    clear mdata;
+                    
+                end
+                
+                startidx_TR = thisidx(end)+1;
                 clear thisidx;
+                
             end
             
             
@@ -188,7 +230,7 @@ for ss = 1:length(subj)
             rf = roi_rf_struct{rr};
             
             
-            fn2s = sprintf('%s/%s_ROIdata/%s_%s_%s_%s.mat',root,task_dir,subj{ss},sess{ss}{sess_idx},ROIs{rr},func_type);
+            fn2s = sprintf('%s/%s_ROIdata/%s_%s_%s_%s.mat',root,task_dir,subj{ss},sess{ss}{sess_idx},roi_str{rr},func_type);
             fprintf('saving to %s...\n',fn2s);
             save(fn2s,'d_all','d_allz','r_all','sess_all','r_all','fn_all','rf_file','rf','func_file');
             clear rf d_all d_allz;

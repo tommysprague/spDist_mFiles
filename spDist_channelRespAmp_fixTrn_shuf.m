@@ -1,18 +1,37 @@
-% spDist_pilot_channelRespAmp_fixTrn.m
-% adapted from MGSMap_channelRespAmp_catSess_thruTime_fixTrn.m
+% spDist_channelRespAmp_fixTrn_shuf.m
+% adapted from spDist_channelRespAmp_fixTrn.m and
+% MGSMap_channelRespAmp_catSess_thruTime_fixTrn_shuf.m
 %
 % trains on all MGSMap runs found in trn_dir, using a fixed training time
 % window, then reconstructs on all testing timepoints in tst_sess. voxel
 % selection, if based on n_vox, is done using training data only
 %
 % computes reconstructions at each timepoint using a FIXED encoding model,
-% estimated using specified timepoints
+% estimated using specified timepoints on MGSMap data
+%
+% also computes using a shuffled model (shuffle trial labels for training
+% set)
 %
 % input "sess" refers to TESTING sessions for now...
 %
-% TCS 8/23/2018
-%
-function spDist_channelRespAmp_fixTrn(subj,sess,ROIs,which_vox,trn_tpts)
+% TCS 5/8/2019
+% tsprague@ucsb.edu
+% github.com/tommysprague
+
+       % for reference: 
+       % (saved from spDist_scoreEyeData.m; via eyeData)
+       
+       % 1: distractor condition (1 = no, 2 = distractor)
+       % 2,3: target position X, Y (dva)
+       % 4,5: distractor position X,Y (or NaN; dva)
+       % 6: distractor bin (-3:3; NaN); Cartesian, so + is CCW
+       % 7: distractor direction (1 = CCW, 2 = CW, NaN = no dst)
+       % 8: correct? (0 or 1; NaN)
+       % 9: RT
+
+
+
+function spDist_channelRespAmp_fixTrn_shuf(subj,sess,ROIs,which_vox,trn_tpts,n_shuf_iter)
 
 tst_dir = 'spDist';
 trn_dir = 'wmChoose';
@@ -43,12 +62,24 @@ chan_centers = linspace(360/n_chan,360,n_chan);
 
 % evaluate basis set at these
 angs = linspace(-176,180,90);
+
+
+% for debugging, also save out average reconstructions...
+n_angs_sv = 30;
+angs_sv = linspace(-180+360/n_angs_sv,180,n_angs_sv);
+
 if nargin < 4
     which_vox = 0.1; % top 1000 vox
 end
 
 if nargin < 5
     trn_tpts = [7:15]; % what we use to train model!
+end
+
+
+% # of times to shuffle training set (after computing intact model)
+if nargin < 6
+    n_shuf_iter = 1000;
 end
 
 align_to = {'targ_ang_all','dist_ang_all'};
@@ -61,6 +92,9 @@ delay_tpts = -3:26; % 0.8 s TR ---- what we want to reconstruct
 for ss = 1:length(subj)
     
     for vv = 1:length(ROIs)
+        
+        % seed each ROI the same
+        rng(spDist_randSeed);
         
         % load TESTING data from each session and concatenate
         data_tst = [];
@@ -101,51 +135,34 @@ for ss = 1:length(subj)
         
         % because which_TRs doesn't necessarily start at 1...
         delay_idx = find(ismember(which_TRs_tst,delay_tpts));
-        %IEM_trn_tpt_idx = find(ismbember(which_TRs,trn_tpts)); % tpts to average over when training IEM
         
-        % save out recons rotated to align with target and with distractor
-        % (nans for no-distractor trials)
-        recons = cell(length(align_to),1);
-        
-        recons_raw = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
-        chan_resp = nan(size(data_tst.c_all,1),n_chan,length(delay_tpts));
-        
-        
-        %w_all = cell(n_folds,1);
-        %r2_all = nan(n_folds,length(delay_tpts));
+        % for each item (target; distractor), n_trials x n_delay_tpts x
+        % n_shuff_iter
+        all_fidelity = cell(length(align_to),1);
+        recons_sv = cell(length(align_to),1);
+        for aa = 1:length(all_fidelity)
+            all_fidelity{aa} = nan(size(data_tst.c_all,1),length(delay_tpts),n_shuf_iter);
+            recons_sv{aa} = nan(size(data_tst.c_all,1),length(angs_sv),length(delay_tpts),n_shuf_iter);
+        end
+
         
         
-        % loop over CV folds
-        %for fold_idx = 1:n_folds
-            
-            % ~~~~~~~ first, estimate IEM ~~~~~~~~~~
-            
+        
+        % shuffle! ~~~~~~~~~~~~
+        for shuf_iter = 1:n_shuf_iter
             
             
+            % only save these for each shuffling iteration
             
-            % pick CV sets
-%             trn_runs = ones(length(unique(data.r_LORO)),1);
-%             
-%             
-%             trn_runs(fold_idx) = 0;
-%             trn_runs = trn_runs==1; % convert to logical
-%             
-%             
-%             
-%             tst_runs = trn_runs~=1;
+            % save out recons rotated to align with target and with distractor
+            % (nans for no-distractor trials)
+            recons = cell(length(align_to),1);
             
-            % LEFTOVER: when we used to use non-unitary #'s of runs for
-            % trn/tst
-            %trn_idx = ismember(data.r_LORO,ru(find(trn_runs)));
-            %tst_idx = ismember(data.r_LORO,ru(find(tst_runs)));
-            
-            %tst_idx = data_tst.r_LORO==ru(fold_idx);
-            %trn_idx = ~tst_idx;
+            chan_resp = nan(size(data_tst.c_all,1),n_chan,length(delay_tpts));
             
             
-            
-            
-            % voxel selection (from _genModelDecode2.m scripts)
+            % voxel selection (from _genModelDecode2.m scripts) (NOTE: not
+            % shuffled here!))
             
             
             % first - filter voxels based on whether there's signal (if no signal,
@@ -210,26 +227,19 @@ for ss = 1:length(subj)
             %trn = mean(data.dt_map(:,:,delay_idx),3);
             trn = trndata;
             
+            %% set up design matrix; shuffle it
             
             X = spDist_makeX1(data_trn.c_map(:,1),chan_centers);
             
             
             X = X/max(X(:));
             
+            X = X(randperm(size(X,1)),:); % shuffle!
             
             %% compute channel weights using only training set (wmMapSpace)
             
             %fprintf('computing channel weights\n');
             w = X\trn;
-            w_all = w;
-            
-            
-            %             % compute predicted channel response given this W and X
-            %             pred_resp_tst = X_tst * w_all{fold_idx};
-            %             pred_resp_trn = X * w_all{fold_idx};
-            %
-            %             r2_all_trn(fold_idx,:) = diag(corr(pred_resp_trn,trn)).^2;
-            
             
             % ~~~~~~~~ then, reconstruct each time point ~~~~~~~~~~
             
@@ -237,22 +247,10 @@ for ss = 1:length(subj)
                 %fprintf('TPT: %i\n',tpt_idx);
                 
                 
-                %badvox = (mystd==0);
-                
-                %mydata = trndata;
                 tstdata = mean(data_tst.dt_allz(:,:,delay_idx(tpt_idx)),3);
                 
                 tstdata = tstdata(:,these_vox);
                 tst = tstdata;
-                
-                
-                
-                % compute R2 - how well do the predicted voxel responses
-                % (pred_resp) on this fold predict observed voxel
-                % responses?
-                %r2_all(fold_idx,tpt_idx) = 1 - (sum((tst(:) - pred_resp_tst(:)).^2) / sum((tst(:)-mean(tst(:))).^2));
-                %                r2_all(fold_idx,:,tpt_idx) = diag(corr(tst,pred_resp_tst)).^2;
-                
                 
                 %% use (optimized) design matrix to compute channel responses using testing data
                 
@@ -260,110 +258,95 @@ for ss = 1:length(subj)
                 
                 chan_resp(:,:,tpt_idx) = (inv(w*w.')*w*tst.').';
                 
-                
-
-                
                 clear tst tstdata;
                 
-            end % end of testing/reconstruction loop (within each fold)
+            end % end of testing/reconstruction loop 
             
             clear trn trn_idx tst_idx trn_runs tst_runs w trndata allF f_thresh thisG mystd;
             
-       % end % end of CV loop
-        
-       
-       %% after all channel resp computed, coregister each trial
-       
-       % basis set used for 'raw' reconstructions
-       myb_orig = build_basis_polar_mat(angs,chan_centers);
+            
+            
+            %% after all channel resp computed, coregister each trial
+            
+            
+            for aa = 1:length(align_to)
+                recons{aa} = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
+                for tt = 1:size(chan_resp,1)
+                    
+                    % we have to build a basis set for each trial, each target
+                    
+                    % remove the polar angle of the aligned target
+                    rot_by = data_tst.(align_to{aa})(tt);%atan2d(data.xy_task(tt,2),data.xy_task(tt,1));
+                    
+                    if ~isnan(rot_by)
+                        this_rfTh = chan_centers-rot_by; % rotate basis
+                        myb = build_basis_polar_mat(angs,this_rfTh);
+                        %myb_save = build_basis_polar_mat(angs_sv,this_rfTh);
+                    end
+                    
+                    % myb is length(angs) x n_channels
+                    % we want to weight each channel (col) by this trials' channel
+                    % activation
+                    % (result shoudl be 1 x length(angs))
+                    
+                    
+                    for tpt_idx = 1:length(delay_tpts)
+                        % on no-distractor trials, we won't have to rotate by
+                        % anything, so those won't have a distractor-aligned
+                        % reconstruction
+                        if ~isnan(rot_by)
+                            recons{aa}(tt,:,tpt_idx) = (myb * chan_resp(tt,:,tpt_idx).').';
+                            %recons_sv{aa}(tt,:,tpt_idx,shuf_iter) = (myb_save * chan_resp(tt,:,tpt_idx).').';
+                        end
 
-       for aa = 1:length(align_to)
-           recons{aa} = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
-           for tt = 1:size(chan_resp,1)
-               
-               % we have to build a basis set for each trial, each target
-               
-               % remove the polar angle of the aligned target
-               rot_by = data_tst.(align_to{aa})(tt);%atan2d(data.xy_task(tt,2),data.xy_task(tt,1));
-               
-               if ~isnan(rot_by)
-                   this_rfTh = chan_centers-rot_by; % rotate basis
-                   myb = build_basis_polar_mat(angs,this_rfTh);
-               end
-               % myb is length(angs) x n_channels
-               % we want to weight each channel (col) by this trials' channel
-               % activation
-               % (result shoudl be 1 x length(angs))
-               
-               
-               for tpt_idx = 1:length(delay_tpts)
-                   % on no-distractor trials, we won't have to rotate by
-                   % anything, so those won't have a distractor-aligned
-                   % reconstruction
-                   if ~isnan(rot_by)
-                       recons{aa}(tt,:,tpt_idx) = (myb * chan_resp(tt,:,tpt_idx).').';
-                   end
-                   
-                   % only need to do this once (raw)
-                   if aa == 1
-                        recons_raw(tt,:,tpt_idx) = (myb_orig * chan_resp(tt,:,tpt_idx).').';
-                   end
-               end
-               
-
-               
-               clear rot_by myb;
-           end
-           
-       end
+                    end
+                    
+                    clear rot_by myb myb_save;
+                end
+                
+                % compute fidelity
+                all_fidelity{aa}(:,:,shuf_iter) = squeeze(mean(cosd(angs) .* recons{aa},2));
+                
+            end
+        end
        
+       % TCS 5/9/2019 - we won't do shuffling version of this now...
        
-       % for reference: 
-       % (saved from spDist_scoreEyeData.m; via eyeData)
-       
-       % 1: distractor condition (1 = no, 2 = distractor)
-       % 2,3: target position X, Y (dva)
-       % 4,5: distractor position X,Y (or NaN; dva)
-       % 6: distractor bin (-3:3; NaN); Cartesian, so + is CCW
-       % 7: distractor direction (1 = CCW, 2 = CW, NaN = no dst)
-       % 8: correct? (0 or 1; NaN)
-       % 9: RT
-       
-       % average distractor representation on distractor trials
-       dist_mu = squeeze(mean( recons{2}(data_tst.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
-       
-       % variable for saving distractor-corrected single-item WM
-       % representations
-       recons_nodist = nan(size(recons{1})); 
-       
-       % angular difference - distractor relative to target (+ is CCW, -
-       % CW)
-       ang_diff = atan2d( sind(data_tst.dist_ang_all-data_tst.targ_ang_all), cosd(data_tst.dist_ang_all-data_tst.targ_ang_all) );
-       
-       zero_idx = find(angs==0); % 45
-       
-       % remove that average from each trial, after aligning based on
-       % relative distractor location per trial
-       for tt = 1:size(recons{1},1)
-           
-           % if distractor trial, remove average of all distractors
-           if data_tst.c_all(tt,1)==2
-               
-               % distance between distractor and WM position
-               % ang_diff(tt)
-               
-               % find nearest ang bin - how many units to move?
-               [~,ang_diff_idx] = min(abs(angs-ang_diff(tt)));
-               
-               
-               % circularly shift thismu by (ang_diff_idx-zeroidx)
-               % (if positive, distractor is +ang compared to targ, which
-               % is right, so shift RIGHT) (TCS, updated 5/9/2019)
-               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,(ang_diff_idx-zero_idx),1),-1);
-               
-           end
-       end
-       
+%        % average distractor representation on distractor trials
+%        dist_mu = squeeze(mean( recons{2}(data_tst.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
+%        
+%        % variable for saving distractor-corrected single-item WM
+%        % representations
+%        recons_nodist = nan(size(recons{1})); 
+%        
+%        % angular difference - distractor relative to target (+ is CCW, -
+%        % CW)
+%        ang_diff = atan2d( sind(data_tst.dist_ang_all-data_tst.targ_ang_all), cosd(data_tst.dist_ang_all-data_tst.targ_ang_all) );
+%        
+%        zero_idx = find(angs==0); % 45
+%        
+%        % remove that average from each trial, after aligning based on
+%        % relative distractor location per trial
+%        for tt = 1:size(recons{1},1)
+%            
+%            % if distractor trial, remove average of all distractors
+%            if data_tst.c_all(tt,1)==2
+%                
+%                % distance between distractor and WM position
+%                % ang_diff(tt)
+%                
+%                % find nearest ang bin - how many units to move?
+%                [~,ang_diff_idx] = min(abs(angs-ang_diff(tt)));
+%                
+%                
+%                % circularly shift thismu by -1*(ang_diff_idx-zeroidx)
+%                % (if positive, distractor is +ang compared to targ, which
+%                % is right, so shift left)
+%                recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,-1*(ang_diff_idx-zero_idx),1),-1);
+%                
+%            end
+%        end
+%        
        
        % things we want to save
         
@@ -377,15 +360,15 @@ for ss = 1:length(subj)
         % save with VE marker when which_vox < 1, otherwise, number of
         % vox
         if which_vox < 1
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_VE%03.f_trn%ito%i_recon_thruTime1_shuf%i.mat',root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,100*which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         else
-            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end));
+            fn2s = sprintf('%s/%s_reconstructions/%s_%s_%s_%s_%ichan_%ivox_trn%ito%i_recon_thruTime1_shuf%i.mat'  ,root,tst_dir,subj{ss},horzcat(sess{ss}{:}),ROIs{vv},func_suffix,n_chan,    which_vox,trn_tpts(1),trn_tpts(end),n_shuf_iter);
         end
         fprintf('saving to %s...\n',fn2s);
         
-        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','recons_nodist','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
+        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','all_fidelity','which_vox','sess_all','these_vox','a_all','fn_trn');
         
-        clear data c_all r_all p_all chan_resp w_all recons a_all;
+        clear data c_all r_all p_all chan_resp w_all recons a_all all_fidelity recons_sv;
         
         
         

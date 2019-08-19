@@ -1,18 +1,14 @@
-% spDist_pilot_channelRespAmp_fixTrn.m
-% adapted from MGSMap_channelRespAmp_catSess_thruTime_fixTrn.m
+% spDist_channelRespAmp_GATdist.m
+% adapted from MGSMap_channelRespAmp_catSess_GAT1.m
 %
-% trains on all MGSMap runs found in trn_dir, using a fixed training time
-% window, then reconstructs on all testing timepoints in tst_sess. voxel
-% selection, if based on n_vox, is done using training data only
+% trains using distractor trials, both on target position and distractor
+% position, at each tpt in turn, then reconstructs and computes fidelity at
+% each timepoint
 %
-% computes reconstructions at each timepoint using a FIXED encoding model,
-% estimated using specified timepoints
 %
-% input "sess" refers to TESTING sessions for now...
+% TCS 8/19/2019
 %
-% TCS 8/23/2018
-%
-function spDist_channelRespAmp_fixTrn(subj,sess,ROIs,which_vox,trn_tpts)
+function spDist_channelRespAmp_GATdist(subj,sess,ROIs,which_vox,trn_tpts)
 
 tst_dir = 'spDist';
 trn_dir = 'wmChoose';
@@ -47,9 +43,9 @@ if nargin < 4
     which_vox = 0.1; % top 1000 vox
 end
 
-if nargin < 5
-    trn_tpts = [7:15]; % what we use to train model!
-end
+% if nargin < 5
+%     trn_tpts = [7:15]; % what we use to train model!
+% end
 
 align_to = {'targ_ang_all','dist_ang_all'};
 
@@ -62,8 +58,8 @@ for ss = 1:length(subj)
     
     for vv = 1:length(ROIs)
         
-        % load TESTING data from each session and concatenate
-        data_tst = [];
+        % load TESTING (and training for GAT...) data from each session and concatenate
+        data = [];
         
         for sess_idx = 1:length(sess{ss})
             
@@ -73,76 +69,141 @@ for ss = 1:length(subj)
             
             thisdata.sess = sess_idx*ones(size(thisdata.r_all));
             
-            data_tst = cat_struct(data_tst,thisdata,{'rf','TR','which_TRs'}); % skip 'rf', these will be the same
+            data = cat_struct(data,thisdata,{'rf','TR','which_TRs'}); % skip 'rf', these will be the same
             
         end
         
         
-        % list training sessions for this ROI:
+        which_TRs = data.which_TRs;
+        %which_TRs_tst = data_tst.which_TRs;
+        %which_TRs_trn = data_trn.which_TRs;
         
-        tmp_fn_trn = dir( sprintf( '%s/%s_trialData/%s_%s*_%s_%s_trialData.mat', trn_root,trn_dir,subj{ss},trn_sess,ROIs{vv},func_suffix) );
-        
-        % loop over those and load (as above) - TRAINING data
-        data_trn = [];
-        fn_trn = cell(length(tmp_fn_trn),1);
-        for ff = 1:length(tmp_fn_trn)
-            fn_trn{ff} = sprintf('%s/%s',tmp_fn_trn(ff).folder,tmp_fn_trn(ff).name);
-            fprintf('loading TRAINING data from %s...\n',fn_trn{ff});
-            thisdata = load(fn_trn{ff});
-            
-            thisdata.sess = ff*ones(size(thisdata.r_map));
-            
-            data_trn = cat_struct(data_trn,thisdata,{'rf','TR','which_TRs'}); % skip 'rf', these will be the same
-        end
-        
-        which_TRs_tst = data_tst.which_TRs;
-        which_TRs_trn = data_trn.which_TRs;
+        % write down an index we can use for LORO - 3 digits, first is
+        % sessidx, then run index w/in each session (just for convenience)
+        data.r_LORO = 100*data.sess+data.r_all;
         
         
         % because which_TRs doesn't necessarily start at 1...
-        delay_idx = find(ismember(which_TRs_tst,delay_tpts));
+        delay_idx = find(ismember(which_TRs,delay_tpts));
         %IEM_trn_tpt_idx = find(ismbember(which_TRs,trn_tpts)); % tpts to average over when training IEM
         
         % save out recons rotated to align with target and with distractor
         % (nans for no-distractor trials)
-        recons = cell(length(align_to),1);
+        % n_trn_tpts x n_tst_tpts x 2 (train w/ target location, train w/
+        % distractor location)
+        recons = cell(length(delay_tpts),length(delay_tpts), 2); 
+        recons_raw = cell(length(delay_tpts),length(delay_tpts), 2); 
+        chan_resp = cell(length(delay_tpts),length(delay_tpts), 2);
         
-        recons_raw = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
-        chan_resp = nan(size(data_tst.c_all,1),n_chan,length(delay_tpts));
+        % NOTE: to keep things simple, we'll fill in no-distractor trials
+        % w/ NaN above
         
         
-        %w_all = cell(n_folds,1);
-        %r2_all = nan(n_folds,length(delay_tpts));
+        
+        this_ru = unique(data.r_LORO); % all the runs we'll CV over
+        
+        for trn_tpt_idx = 1:length(delay_tpts)
+            for tst_tpt_idx = 1:length(delay_tpts)
+                
+                % use align_to variable for training/testing?
+                for aa = 1:length(align_to)
+                    
+                    fprintf('Training TPT: %i, Testing TPT: %i\n',trn_tpt_idx,tst_tpt_idx);
+                    
+                    chan_resp{trn_tpt_idx,tst_tpt_idx,aa}  = nan(size(data.c_all,1),n_chan);
+                    recons{trn_tpt_idx,tst_tpt_idx,aa}     = nan(size(data.c_all,1),length(angs));
+                    recons_raw{trn_tpt_idx,tst_tpt_idx,aa} = nan(size(data.c_all,1),length(angs));
+                    
+                    
+                    
+                    for fold_idx = 1:n_folds
+                        
+                        % ~~~~~~~ first, estimate IEM ~~~~~~~~~~
+                        
+                        
+                        
+                        
+                        % pick CV sets
+                        trn_runs = ones(length(unique(data.r_LORO)),1);
+                        
+                        
+                        
+                        trn_idx = data.r_LORO~=this_ru(fold_idx);
+                        tst_idx = data.r_LORO==this_ru(fold_idx);
+                        
+                        
+                        % select voxels, data
+                        trndata = mean(data.dt_allz(trn_idx,:,delay_idx(trn_tpt_idx)),3);
+                        mystd = std(trndata,[],1);
+                        
+                        tstdata = mean(data.dt_allz(tst_idx,:,delay_idx(tst_tpt_idx)),3);
+                        
+                        % if which_vox < 1, means we're using VE threshold
+                        if which_vox < 1
+                            these_vox = mystd~=0 & ~isnan(mystd) & data.rf.ve >= which_vox;
+                            
+                            % otherwise, rank-order voxels by quadrant-wise
+                            % F-score and select top N (NOTE: by dropping NaN
+                            % F-scores from sorting to select threshold, we'll
+                            % also implicitly exclude those voxels - so don't
+                            % need to chop them off first, which creates
+                            % indexing complications)
+                        else
+                            
+                            
+                            allF = nan(size(trndata,2),1);
+                            allp = nan(size(trndata,2),1);
+                            thisG = data.c_map(trn_idx,2);
+                            for voxidx = 1:size(trndata,2)
+                                
+                                thisX = trndata(:,voxidx);
+                                
+                                
+                                [p,tab,stats] = anova1(thisX,thisG,'off');
+                                allF(voxidx) = tab{2,5};
+                                allp(voxidx) = p;
+                                clear thisX p tab stats;
+                            end
+                            
+                            f_sorted = sort(allF(~isnan(allF)),'descend');
+                            if which_vox <= length(allF) % handle case of small ROI
+                                f_thresh = f_sorted(which_vox);
+                            else
+                                f_thresh = f_sorted(end);
+                            end
+                            
+                            these_vox = allF>=f_thresh;
+                            if sum(these_vox)>which_vox
+                                allidx = find(these_vox);
+                                these_vox(allidx((which_vox+1):end)) = 0;
+                            end
+                            
+                        end
+                        
+                        trndata = trndata(:,these_vox);
+                        tstdata = tstdata(:,these_vox);
+                        
+                        clear mystd;
+                        
+                        
+                        % n_trials x n_vox
+                        trn = trndata;
+                        
+                        X_trn = spDist_makeX1(data.(align_to{aa}),chan_centers);
+                        
+                        
+                        
+                    end
+                end
+            end
+        end
+  
         
         
-        % loop over CV folds
-        %for fold_idx = 1:n_folds
-            
-            % ~~~~~~~ first, estimate IEM ~~~~~~~~~~
-            
-            
-            
-            
-            % pick CV sets
-%             trn_runs = ones(length(unique(data.r_LORO)),1);
-%             
-%             
-%             trn_runs(fold_idx) = 0;
-%             trn_runs = trn_runs==1; % convert to logical
-%             
-%             
-%             
-%             tst_runs = trn_runs~=1;
-            
-            % LEFTOVER: when we used to use non-unitary #'s of runs for
-            % trn/tst
-            %trn_idx = ismember(data.r_LORO,ru(find(trn_runs)));
-            %tst_idx = ismember(data.r_LORO,ru(find(tst_runs)));
-            
-            %tst_idx = data_tst.r_LORO==ru(fold_idx);
-            %trn_idx = ~tst_idx;
-            
-            
+        
+        
+
+
             
             
             % voxel selection (from _genModelDecode2.m scripts)
@@ -173,7 +234,7 @@ for ss = 1:length(subj)
                 % voxel selection (training data only)
                 allF = nan(size(trndata,2),1);
                 allp = nan(size(trndata,2),1);
-                thisG = data_tst.c_map(trn_idx,2);
+                thisG = data.c_map(trn_idx,2);
                 for voxidx = 1:size(trndata,2)
                     
                     thisX = trndata(:,voxidx);
@@ -219,7 +280,7 @@ for ss = 1:length(subj)
             
             %% compute channel weights using only training set (wmMapSpace)
             
-            fprintf('computing channel weights\n');
+            %fprintf('computing channel weights\n');
             w = X\trn;
             w_all = w;
             
@@ -234,13 +295,13 @@ for ss = 1:length(subj)
             % ~~~~~~~~ then, reconstruct each time point ~~~~~~~~~~
             
             for tpt_idx = 1:length(delay_tpts)
-                fprintf('TPT: %i\n',tpt_idx);
+                %fprintf('TPT: %i\n',tpt_idx);
                 
                 
                 %badvox = (mystd==0);
                 
                 %mydata = trndata;
-                tstdata = mean(data_tst.dt_allz(:,:,delay_idx(tpt_idx)),3);
+                tstdata = mean(data.dt_allz(:,:,delay_idx(tpt_idx)),3);
                 
                 tstdata = tstdata(:,these_vox);
                 tst = tstdata;
@@ -256,7 +317,7 @@ for ss = 1:length(subj)
                 
                 %% use (optimized) design matrix to compute channel responses using testing data
                 
-                fprintf('computing channel responses\n');
+                %fprintf('computing channel responses\n');
                 
                 chan_resp(:,:,tpt_idx) = (inv(w*w.')*w*tst.').';
                 
@@ -278,13 +339,13 @@ for ss = 1:length(subj)
        myb_orig = build_basis_polar_mat(angs,chan_centers);
 
        for aa = 1:length(align_to)
-           recons{aa} = nan(size(data_tst.c_all,1),length(angs),length(delay_tpts));
+           recons{aa} = nan(size(data.c_all,1),length(angs),length(delay_tpts));
            for tt = 1:size(chan_resp,1)
                
                % we have to build a basis set for each trial, each target
                
                % remove the polar angle of the aligned target
-               rot_by = data_tst.(align_to{aa})(tt);%atan2d(data.xy_task(tt,2),data.xy_task(tt,1));
+               rot_by = data.(align_to{aa})(tt);%atan2d(data.xy_task(tt,2),data.xy_task(tt,1));
                
                if ~isnan(rot_by)
                    this_rfTh = chan_centers-rot_by; % rotate basis
@@ -330,7 +391,7 @@ for ss = 1:length(subj)
        % 9: RT
        
        % average distractor representation on distractor trials
-       thismu = squeeze(mean( recons{2}(data_tst.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
+       dist_mu = squeeze(mean( recons{2}(data.c_all(:,1)==2,:,:), 1 )); % n_angs x n_tpts
        
        % variable for saving distractor-corrected single-item WM
        % representations
@@ -338,16 +399,16 @@ for ss = 1:length(subj)
        
        % angular difference - distractor relative to target (+ is CCW, -
        % CW)
-       ang_diff = atan2d( sind(data_tst.dist_ang_all-data_tst.targ_ang_all), cosd(data_tst.dist_ang_all-data_tst.targ_ang_all) );
+       ang_diff = atan2d( sind(data.dist_ang_all-data.targ_ang_all), cosd(data.dist_ang_all-data.targ_ang_all) );
        
-       zeroidx = find(angs==0); % 45
+       zero_idx = find(angs==0); % 45
        
        % remove that average from each trial, after aligning based on
        % relative distractor location per trial
        for tt = 1:size(recons{1},1)
            
            % if distractor trial, remove average of all distractors
-           if data_tst.c_all(tt,1)==1
+           if data.c_all(tt,1)==2
                
                % distance between distractor and WM position
                % ang_diff(tt)
@@ -356,10 +417,10 @@ for ss = 1:length(subj)
                [~,ang_diff_idx] = min(abs(angs-ang_diff(tt)));
                
                
-               % circularly shift thismu by -1*(ang_diff_idx-zeroidx)
+               % circularly shift thismu by (ang_diff_idx-zeroidx)
                % (if positive, distractor is +ang compared to targ, which
-               % is right, so shift left)
-               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - circshift(thismu,);
+               % is right, so shift RIGHT) (TCS, updated 5/9/2019)
+               recons_nodist(tt,:,:) = recons{1}(tt,:,:) - shiftdim(circshift(dist_mu,(ang_diff_idx-zero_idx),1),-1);
                
            end
        end
@@ -367,11 +428,11 @@ for ss = 1:length(subj)
        
        % things we want to save
         
-        c_all = data_tst.c_all;
-        r_all = data_tst.r_all;
-        p_all = data_tst.p_all;
-        a_all = [data_tst.targ_ang_all data_tst.dist_ang_all];
-        sess_all  = data_tst.sess;
+        c_all = data.c_all;
+        r_all = data.r_all;
+        p_all = data.p_all;
+        a_all = [data.targ_ang_all data.dist_ang_all];
+        sess_all  = data.sess;
         
         
         % save with VE marker when which_vox < 1, otherwise, number of
@@ -383,7 +444,7 @@ for ss = 1:length(subj)
         end
         fprintf('saving to %s...\n',fn2s);
         
-        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
+        save(fn2s,'c_all','r_all','p_all','n_chan','delay_tpts','angs','recons','recons_raw','recons_nodist','chan_resp','w_all','which_vox','sess_all','these_vox','a_all','fn_trn');
         
         clear data c_all r_all p_all chan_resp w_all recons a_all;
         
